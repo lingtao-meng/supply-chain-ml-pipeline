@@ -1,0 +1,27 @@
+0
+Days for shipment (scheduled)
+Category Id
+Department Id
+Order Item Discount Rate
+Order Item Quantity
+Product Price
+Product Status
+order_month
+order_dayofweek
+order_quarter
+order_is_weekend
+order_dayofyear
+total_order_value
+discount_amount
+value_per_ship_day
+Type_encoded
+Category Name_encoded
+Department Name_encoded
+Market_encoded
+Shipping Mode_encoded
+Customer Segment_encoded
+Customer State_encoded
+discount_bucket_encoded
+cat_discount_encoded
+market_ship_encoded
+seg_ship_encoded
