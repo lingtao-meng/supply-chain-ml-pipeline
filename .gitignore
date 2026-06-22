@@ -1,0 +1,7 @@
+data/*.csv
+models/*.pkl
+AutogluonModels/
+build*.py
+.DS_Store
+__pycache__/
+.ipynb_checkpoints/
