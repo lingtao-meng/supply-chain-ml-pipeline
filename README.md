@@ -1,100 +1,86 @@
-# 供应链延迟交付风险预测 — 完整机器学习流水线
+# 供应链延迟交付风险预测
 
-基于 **DataCo 全球供应链数据集**（180K+ 订单，53个原始特征），构建从数据清洗到业务价值量化的端到端机器学习流水线。
+用 DataCo 全球供应链数据（180K+ 条订单，53 个原始字段）做的一个延迟交付预测项目。从数据清洗、特征工程到多模型对比、超参调优、SHAP 解释、业务量化，走了一遍完整的 ML 流水线。
 
-**七大核心发现：** 🔬 对抗验证分布偏移 | 🤖 AutoML天花板 | 🧠 DL vs 树模型 | ⏰ Concept Drift | 🛡️ 数据泄露修复
+## 业务问题
 
-## 🎯 业务问题
+订单延迟交付是供应链里代价很高的风险。想做的事情很简单：在订单发货之前，预测它有多大可能会延迟。如果能提前知道高风险订单，就可以加急配送、主动联系客户，而不是等客户投诉了再补救。
 
-延迟交付是供应链管理中最昂贵的风险之一。本项目在订单发货前预测其延迟概率，为供应链团队提供**主动干预**的决策依据——将事后补救转变为事前预防。
+## 数据集
 
-## 🧠 技术流水线
+DataCo Supply Chain Dataset，从 Kaggle 下载。180,519 条订单记录，53 个原始字段，包括订单类型、运输方式、产品品类、客户地区、订单日期、运输日期等等。数据有缺失值也有异常值，比较接近真实工作中能遇到的数据。
 
-```
-原始数据 (180K × 53)
-    │
-    ├── 数据清洗 ──── 缺失值处理 · 异常值检测 · 数据泄露排查
-    ├── 特征工程 ──── 时间特征 · 类别编码 · SMOTE过采样
-    ├── 模型对比 ──── LR · RF · XGBoost · LightGBM · MLP (5模型)
-    ├── 超参调优 ──── Optuna贝叶斯搜索 (30 trials)
-    ├── 可解释性 ──── SHAP全局+局部特征重要性
-    └── 业务翻译 ──── 混淆矩阵→成本模型→ROI
-```
+## 做了什么
 
-## 📊 六模型性能对比（时间序列切分）
+整个项目的流程：
 
-| 模型 | AUC | F1 | Precision | Recall | 训练时间 |
-|------|:--:|:--:|:--:|:--:|:--:|
-| Logistic Regression | 0.723 | 0.638 | 0.682 | 0.601 | 0.1s |
-| MLP (3层) | 0.736 | 0.654 | 0.700 | 0.614 | 5.8s |
-| TabNet (Google DL) | 0.728 | 0.655 | 0.712 | 0.607 | 42s |
-| Random Forest | 0.742 | 0.662 | 0.730 | 0.605 | 4.5s |
-| LightGBM | 0.741 | 0.662 | 0.721 | 0.611 | 1.4s |
-| **XGBoost** | **0.744** | **0.690** | **0.729** | **0.656** | 1.0s |
+1. **数据清洗**：删了邮箱、密码、人名这种无关列，处理缺失值。比较关键的一步是识别并移除了数据泄露特征——Delivery Status 跟标签直接相关，shipping date 是事后才知道的，这些留着的话 AUC 能跑到 0.99 但那叫作弊
+2. **特征工程**：从日期提取了月份、星期、季度、是否周末；算了订单总价、折扣金额、单位运输天数价值；做了几组交互特征（运输方式×市场、品类×折扣率、客户类型×运输方式）
+3. **训练对比**：用时间切分（早期数据训练，后期数据测试），训练了 6 个模型：Logistic Regression、Random Forest、XGBoost、LightGBM、MLP（三层神经网络）、TabNet（Google 的注意力表格模型）
+4. **超参调优**：用 Optuna 的贝叶斯搜索跑了 30 轮
+5. **SHAP 解释**：看了哪些特征对预测贡献最大
+6. **业务量化**：把混淆矩阵转成成本模型，算了不同客户流失成本下的净收益
 
-> 1️⃣ **对抗验证发现严重分布偏移：** 训练了一个分类器来区分「早期订单」和「后期订单」——AUC=**0.91**。说明训练集和测试集的分布差异极大（Category/Market 变化最大）。这解释了为什么模型 AUC 冲不破 0.74：不是模型不够好，是数据在漂移。**这个发现直接把项目从「调参比赛」升级到「工业 ML 的根本挑战」。**
-> 2️⃣ **AutoGluon 天花板：** AutoML 最佳 AUC=0.735——我的手调 XGBoost 反而高出 1.3%。
-> 3️⃣ **TabNet 没打赢 XGBoost：** 与 NeurIPS 2022 benchmark 一致。
+## 主要结果
 
-## 🔍 关键预测因子 (SHAP)
+6 个模型在时间切分验证集上的对比：
 
-| 排名 | 特征 | SHAP重要性 | 业务含义 |
-|:--:|------|:--:|------|
-| 1 | Shipping Mode | 0.794 | 不同运输方式的可靠性差异显著 |
-| 2 | Scheduled Shipping Days | 0.691 | 计划的运输天数是最直接的预测信号 |
-| 3 | Order Type | 0.459 | 不同订单类型（采购/销售/退货）的延迟模式不同 |
-| 4 | Day of Year | 0.175 | 季节性波动影响物流效率 |
-| 5 | Discount Rate | 0.118 | 高折扣订单可能对应低优先级配送 |
+| 模型 | AUC | F1 |
+|------|:--:|:--:|
+| XGBoost | 0.744 | 0.690 |
+| LightGBM | 0.741 | 0.662 |
+| Random Forest | 0.742 | 0.662 |
+| MLP（3层） | 0.736 | 0.654 |
+| TabNet（Google DL） | 0.728 | 0.655 |
+| Logistic Regression | 0.723 | 0.638 |
 
-## 💰 业务价值
+XGBoost 最好，AUC 0.744。TabNet 反而没打过 XGBoost——事实上表格数据上 DL 打不过梯度提升这件事，NeurIPS 2022 的 benchmark 也有类似结论。
 
-| 指标 | 数值 |
-|------|------|
-| 测试集上的净收益 | $600 |
-| 全量数据预估年收益 | **~$4,000** |
-| 相比无模型（全部客户流失）的成本降低 | **37.1%** |
-| TP (成功预警) | 9,733 笔 |
-| FP (误报成本) | 3,623 笔 → $362,300 |
-| FN (漏报损失) | 5,114 笔 → $2,557,000 |
+## 几个有意思的发现
 
-## 🛠 技术栈
+**1. 数据分布偏移**
 
-- **数据处理:** Pandas, NumPy (缺失值, 异常值, 类型转换)
-- **特征工程:** SMOTE过采样, Label Encoding, 时间特征提取
-- **模型:** XGBoost · LightGBM · Random Forest · Logistic Regression · MLP
-- **调优:** Optuna (TPE贝叶斯采样, 30次搜索)
-- **可解释性:** SHAP (TreeExplainer, Summary Plot)
-- **评估:** AUC-ROC, F1, Precision, Recall, Confusion Matrix
+我做了个对抗验证——训练一个分类器来区分「早期订单」和「后期订单」，结果这个分类器的 AUC 高达 0.91。说明训练集和测试集的数据分布差得非常远。具体来说，产品品类（Category）和市场区域（Market）在不同时间段变化最大。
 
-## 🖥️ Streamlit 在线应用
+这也解释了为什么 AUC 冲不破 0.74：不是模型不够好，是数据本身在漂移。随机切分的 CV 能到 0.838，但那是因为把未来信息漏到了训练里。时间切分的 0.744 才是真实的、能在生产环境用的数字。
 
-交互式延迟交付风险预测工具，选择订单参数即可实时预测。
+**2. AutoGluon 天花板**
+
+我用 AutoGluon（AutoML 工具）在同样的数据上跑了 10 分钟，它自动尝试了多种模型和集成，最佳结果是 AUC 0.735——比我的手调 XGBoost（0.744）还低一点。说明在这个数据集上，手工做的特征工程和参数选择确实起到了作用，不是随便调个 AutoML 就能替代的。
+
+**3. Target Encoding 的意外效果**
+
+试了把 Label Encoding 换成 Target Encoding 来处理类别特征，以为会更好，结果 AUC 反而掉到了 0.732。后来想想可能是在时间切分下，Target Encoding 用全量数据的均值会有轻微的数据泄露——在真实项目中不是什么技巧都能无脑用的。
+
+**4. Voting Ensemble 没明显增益**
+
+把 XGBoost、LightGBM、Random Forest 做了软投票集成，AUC 只提高了 0.004。这三个模型本身同质性太高，集成带来的收益很有限。
+
+## 运行
+
+数据文件比较大（93MB），没传上来。需要先从 Kaggle 下载：
 
 ```bash
-# 本地运行
+# 下载数据
+python -c "import kagglehub; kagglehub.dataset_download('evilspirit05/datasupplychain')"
+
+# 把 CSV 放到 data/ 目录下
+
+# 安装依赖
+pip install pandas numpy scikit-learn xgboost lightgbm optuna shap imbalanced-learn streamlit
+
+# 跑 notebook
+cd notebooks && jupyter notebook supply_chain_ml_pipeline.ipynb
+```
+
+## 在线应用
+
+本地跑 Streamlit：
+
+```bash
 cd app && streamlit run app.py
 ```
 
-## 🚀 快速开始
-
-```bash
-pip install pandas numpy scikit-learn xgboost lightgbm optuna shap imbalanced-learn streamlit
-
-cd notebooks
-jupyter notebook supply_chain_ml_pipeline.ipynb
-```
-
-## ⚡ 数据泄露防护
-
-本项目在特征工程阶段主动移除了以下会造成数据泄露的特征：
-- `Delivery Status` — 直接暴露标签
-- `Days for shipping (real)` — 事后才知道
-- `Order Status` — 含延迟信息
-- `shipping date` — 事后才知道
-- `Profit/Sales per customer` — 事后才知道
-
-> 这是工业级ML项目与课程作业的核心区别：课程作业追求高分数，工业项目追求真实可用。
-
-## 📝 License
+## License
 
 MIT
