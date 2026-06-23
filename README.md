@@ -66,10 +66,19 @@
 - **可解释性:** SHAP (TreeExplainer, Summary Plot)
 - **评估:** AUC-ROC, F1, Precision, Recall, Confusion Matrix
 
+## 🖥️ Streamlit 在线应用
+
+交互式延迟交付风险预测工具，选择订单参数即可实时预测。
+
+```bash
+# 本地运行
+cd app && streamlit run app.py
+```
+
 ## 🚀 快速开始
 
 ```bash
-pip install pandas numpy scikit-learn xgboost lightgbm optuna shap imbalanced-learn
+pip install pandas numpy scikit-learn xgboost lightgbm optuna shap imbalanced-learn streamlit
 
 cd notebooks
 jupyter notebook supply_chain_ml_pipeline.ipynb
