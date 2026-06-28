@@ -1,5 +1,8 @@
 # 供应链延迟交付风险预测
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+
+
 用 DataCo 全球供应链数据（180K+ 条订单）做的延迟交付预测项目。核心创新是不做二分类，改用**分位数回归**直接预测延迟天数，再根据成本函数做最优决策。
 
 **核心结论：分位数回归比传统二分类方法省 $119K，比全部干预省 $2.2M。**
