@@ -1,6 +1,6 @@
 # 供应链延迟交付风险预测
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/) [![CI](https://github.com/lingtao-meng/supply-chain-ml-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/lingtao-meng/supply-chain-ml-pipeline/actions/workflows/ci.yml)
 
 
 用 DataCo 全球供应链数据（180K+ 条订单）做延迟交付预测。核心不是「预测会不会延迟」，而是**预测延迟几天，再按统一的成本函数决定给谁加急**。
