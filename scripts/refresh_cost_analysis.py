@@ -109,6 +109,7 @@ def main() -> int:
     ap.add_argument("--data", default=str(ROOT / "data" / "DataCoSupplyChainDataset.csv"))
     ap.add_argument("--penalty", type=float, default=200.0, help="$ per late day")
     ap.add_argument("--no-cache", action="store_true")
+
     args = ap.parse_args()
 
     print("== data ==")
@@ -126,10 +127,15 @@ def main() -> int:
     models = payload["quantile"]
     clf = payload["binary"]
 
-    p = {q: m.predict(split.X_test) for q, m in models.items()}
-    p10, p50, p90 = p[0.1], p[0.5], p[0.9]
-    print(f"quantile coverage: "
-          f"P10={(split.y_test <= p10).mean():.1%} "
+    preds = {q: m.predict(split.X_test) for q, m in models.items()}
+    p10, p50, p90 = preds[0.1], preds[0.5], preds[0.9]
+
+    # 目标变量是整数，覆盖率只能落在"原子"上 —— 这解释了为什么分位覆盖率
+    # 不可能连续贴合名义值（详见 README「为什么分位覆盖率对不上名义值」）
+    atoms = {int(v): float((split.y_test <= v).mean()) for v in (-1, 0, 1, 2, 3)}
+    print("achievable coverage ladder (test set):",
+          " ".join(f"P(y<={k})={v:.1%}" for k, v in atoms.items()))
+    print(f"achieved: P10={(split.y_test <= p10).mean():.1%} "
           f"P50={(split.y_test <= p50).mean():.1%} "
           f"P90={(split.y_test <= p90).mean():.1%}")
     print(f"MAE(P50) = {np.abs(split.y_test - p50).mean():.3f} days")
@@ -212,7 +218,18 @@ def main() -> int:
         f"| total late-days | {facts['total_delay_days']:,.0f} |",
         f"| binary baseline AUC | {payload['binary_auc']:.4f} |",
         f"| MAE (P50, days) | {np.abs(delay - p50).mean():.3f} |",
-        f"| P10/P50/P90 coverage | {(delay <= p10).mean():.1%} / {(delay <= p50).mean():.1%} / {(delay <= p90).mean():.1%} |",
+        f"| P10/P50/P90 coverage | "
+        f"{(delay <= p10).mean():.1%} / {(delay <= p50).mean():.1%} / {(delay <= p90).mean():.1%} |",
+        "",
+        "## Coverage is quantised by the discrete target",
+        "",
+        "| 可达到的覆盖率 | 数值 |",
+        "|---|---|",
+        "\n".join(f"| P(y <= {k}) | {v:.1%} |" for k, v in atoms.items()),
+        "",
+        "延迟天数是整数（-2/-1/0/1/2 ...），经验覆盖率只能在原子上跳变，"
+        "所以名义 50% 分位无论如何都对不齐——这不是模型校准问题。",
+        "",
         "",
         "## Policy comparison (one cost function for every policy)",
         "",
