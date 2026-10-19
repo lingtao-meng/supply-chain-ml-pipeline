@@ -1,0 +1,88 @@
+{
+  "facts": {
+    "orders": 180519,
+    "late_rate": 0.5469950531522998,
+    "mean_delay": 0.5400096388745783,
+    "total_delay_days": 162514.0,
+    "date_min": "2015-01-01",
+    "date_max": "2018-01-31"
+  },
+  "split": {
+    "train": 126363,
+    "valid": 27078,
+    "test": 27078
+  },
+  "binary_auc": 0.7794472603107626,
+  "mae_p50": 0.9591432134495292,
+  "coverage": {
+    "p10": 0.12183322254228525,
+    "p50": 0.6449885515916981,
+    "p90": 0.938067804121427
+  },
+  "ceiling": {
+    "mode_base_rate_auc": 0.7802872042192098,
+    "model_auc": 0.7794472603107626,
+    "auc_gap": -0.000839943908447216,
+    "within_mode": {
+      "Second Class": {
+        "n_test": 5395,
+        "late_rate": 0.802224281742354,
+        "auc": 0.5011888325101733
+      },
+      "Standard Class": {
+        "n_test": 16047,
+        "late_rate": 0.3967719823019879,
+        "auc": 0.5008117705965808
+      }
+    },
+    "independence_tests": [
+      {
+        "feature": "Market",
+        "p_value": 0.10558631633867262,
+        "cramers_v": 0.007354766938498145,
+        "dof": 16
+      },
+      {
+        "feature": "Category Name",
+        "p_value": 0.9999532742363763,
+        "cramers_v": 0.01722988706342811,
+        "dof": 196
+      },
+      {
+        "feature": "Customer Segment",
+        "p_value": 0.07132871085116452,
+        "cramers_v": 0.00818157199697071,
+        "dof": 8
+      },
+      {
+        "feature": "Type",
+        "p_value": 0.009523438405719927,
+        "cramers_v": 0.009031282684421821,
+        "dof": 12
+      },
+      {
+        "feature": "order_month",
+        "p_value": 0.004755702954971349,
+        "cramers_v": 0.012935233736996557,
+        "dof": 44
+      }
+    ]
+  },
+  "costs": {
+    "oracle (hindsight)": 2120100.0,
+    "pmf exact (lookup)": 3058600.0,
+    "pmf 7-class model": 3068900.0,
+    "binary: cost-aware": 3069200.0,
+    "binary: tuned tau=0.05": 3194800.0,
+    "quantile grid (3 points)": 3258160.0,
+    "all express": 3346800.0,
+    "binary: p50 > 0 (legacy)": 3358100.0,
+    "capacity 25% (best-first)": 3776800.0,
+    "none (do nothing)": 4882200.0
+  },
+  "params": {
+    "penalty": 200.0,
+    "n_estimators": 200,
+    "pmf_iter": 120
+  }
+}

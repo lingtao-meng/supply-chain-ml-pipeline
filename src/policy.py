@@ -17,7 +17,7 @@ action, the data decides what happens next.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
@@ -41,6 +41,9 @@ EXPRESS = Action("express", cost=100.0, reduction=2.0)
 
 ACTIONS: tuple[Action, ...] = (NONE, NOTIFY, EXPRESS)
 IDX_NONE, IDX_NOTIFY, IDX_EXPRESS = 0, 1, 2
+
+#: Support of the delay target in the DataCo dataset (delays are integers -2..4).
+ATOMS = np.arange(-2, 5)
 
 
 # ---------------------------------------------------------------- expected penalty
@@ -223,6 +226,29 @@ def policy_oracle(
     return costs.argmin(axis=1)
 
 
+def policy_capacity_pmf(
+    pmf: np.ndarray,
+    penalty: float,
+    capacity: float,
+    atoms: np.ndarray = ATOMS,
+    actions: tuple[Action, ...] = ACTIONS,
+) -> np.ndarray:
+    """Capacity-constrained allocation using an exact pmf.
+
+    Same idea as :func:`policy_capacity` but the expected gain comes from the
+    full distribution instead of a quantile reconstruction.
+    """
+    exp_cost = expected_cost_from_pmf(pmf, penalty, atoms, actions)
+    gain = exp_cost[:, IDX_NONE] - exp_cost.min(axis=1)
+    best_action = exp_cost.argmin(axis=1)
+    k = int(round(capacity * len(pmf)))
+    order = np.argsort(-gain)[:k]
+    out = np.full(len(pmf), IDX_NONE, dtype=int)
+    keep = order[gain[order] > 0]
+    out[keep] = best_action[keep]
+    return out
+
+
 # ---------------------------------------------------------------- scoring
 
 
@@ -245,6 +271,8 @@ def score_policy(
         "cost_per_order": float(cost.mean()),
         "intervention_rate": n_touched / len(delay),
         "orders_touched": n_touched,
+        "orders_notify": int((action_idx == IDX_NOTIFY).sum()),
+        "orders_express": int((action_idx == IDX_EXPRESS).sum()),
         "recall_late": caught / max(int(late.sum()), 1),
         "precision": caught / max(n_touched, 1),
         "spend": float(budget) if budget is not None else None,
@@ -345,3 +373,162 @@ def summarise_table(df: pd.DataFrame) -> str:
     sep = "|" + "|".join(["---"] * len(cols)) + "|"
     body = "\n".join("| " + " | ".join(map(str, r)) + " |" for r in view.values)
     return "\n".join([header, sep, body])
+
+
+# ---------------------------------------------------------------- discrete pmf
+# Why this section exists
+# -----------------------
+# ``quantile_grid`` rebuilds a distribution from three points, which is a poor
+# fit for an integer target with a handful of atoms (DataCo delays take only
+# the values -2..4).  Working with an explicit pmf fixes two things at once:
+#
+# * ``E[(D - r)+]`` becomes exact instead of a piecewise-linear approximation;
+# * the *shape* of the distribution (flat, skewed, whatever) survives, which is
+#   what a decision rule actually cares about.
+#
+# The functions below are model-agnostic: the pmf can come from a multiclass
+# model, from a per-segment lookup, or from a two-part binary model.
+
+
+def empirical_pmf(values: np.ndarray, atoms: np.ndarray = ATOMS) -> np.ndarray:
+    """Normalised histogram of a discrete sample over ``atoms``."""
+    values = np.asarray(values, dtype=float)
+    if values.size == 0:
+        raise ValueError("cannot estimate a pmf from an empty sample")
+    return np.array([(values == a).mean() for a in atoms], dtype=float)
+
+
+def pmf_table(
+    groups: np.ndarray, values: np.ndarray, atoms: np.ndarray = ATOMS
+) -> tuple[dict, np.ndarray]:
+    """Per-group pmfs plus an overall fallback for unseen groups."""
+    groups = np.asarray(groups)
+    values = np.asarray(values, dtype=float)
+    table = {g: empirical_pmf(values[groups == g], atoms) for g in np.unique(groups)}
+    return table, empirical_pmf(values, atoms)
+
+
+def pmf_matrix(groups: np.ndarray, table: dict, default: np.ndarray) -> np.ndarray:
+    """Stack the pmf of every row; unseen groups fall back to ``default``."""
+    return np.vstack([table.get(g, default) for g in np.asarray(groups)])
+
+
+def expected_excess_penalty_pmf(
+    pmf: np.ndarray, atoms: np.ndarray = ATOMS, reduction: float = 0.0
+) -> np.ndarray:
+    """``E[max(D - reduction, 0)]`` exactly, from a matrix of pmfs."""
+    pmf = np.atleast_2d(np.asarray(pmf, dtype=float))
+    tail = np.clip(np.asarray(atoms, dtype=float) - reduction, 0.0, None)
+    return pmf @ tail
+
+
+def expected_cost_from_pmf(
+    pmf: np.ndarray,
+    penalty: float,
+    atoms: np.ndarray = ATOMS,
+    actions: tuple[Action, ...] = ACTIONS,
+) -> np.ndarray:
+    """(n_orders, n_actions) expected cost implied by a pmf."""
+    excess = [expected_excess_penalty_pmf(pmf, atoms, a.reduction) for a in actions]
+    return np.column_stack(
+        [
+            a.cost + np.asarray(penalty, dtype=float) * a.multiplier * e
+            for a, e in zip(actions, excess)  # noqa: B905 (py3.9 compat)
+        ]
+    )
+
+
+def policy_expected_cost_pmf(
+    pmf: np.ndarray,
+    penalty: float,
+    atoms: np.ndarray = ATOMS,
+    actions: tuple[Action, ...] = ACTIONS,
+) -> np.ndarray:
+    """Expected-cost-minimising action when the delay distribution is known."""
+    return expected_cost_from_pmf(pmf, penalty, atoms, actions).argmin(axis=1)
+
+
+def two_part_pmf(
+    p_late: np.ndarray, pos_pmf: np.ndarray, neg_pmf: np.ndarray
+) -> np.ndarray:
+    """Distribution implied by a binary classifier.
+
+    ``P(late)`` comes from the classifier; the delay distribution *within* the
+    late and on-time groups is taken from the training window.  Reconstructing
+    a pmf this way is what makes the binary baseline comparable: same model,
+    same decision rule, less information.
+    """
+    p = np.asarray(p_late, dtype=float)[:, None]
+    pos = np.asarray(pos_pmf, dtype=float)[None, :]
+    neg = np.asarray(neg_pmf, dtype=float)[None, :]
+    return p * pos + (1.0 - p) * neg
+
+
+def policy_cost_aware_binary(
+    p_late: np.ndarray,
+    pos_pmf: np.ndarray,
+    neg_pmf: np.ndarray,
+    penalty: float,
+    atoms: np.ndarray = ATOMS,
+    actions: tuple[Action, ...] = ACTIONS,
+) -> np.ndarray:
+    """Fair binary baseline: keep the classifier, add the same decision layer.
+
+    The original baseline was ``p50 > 0 -> express`` — that conflates a bad
+    threshold with a bad model.  This version feeds the classifier's P(late)
+    through exactly the same expected-cost rule the quantile policy uses.
+    """
+    pmf = two_part_pmf(p_late, pos_pmf, neg_pmf)
+    return policy_expected_cost_pmf(pmf, penalty, atoms, actions)
+
+
+def tune_threshold(
+    p_late: np.ndarray, delay: np.ndarray, penalty: float, grid: np.ndarray | None = None
+) -> tuple[float, float]:
+    """Pick an express-only probability threshold on validation data.
+
+    Returns ``(tau, validation_cost)``.  This is the *charitable* version of
+    the classic baseline: it gets a whole validation set to tune its threshold,
+    so a win over it cannot be explained by a badly chosen 0.5 cut-off.
+    """
+    grid = np.linspace(0.05, 0.95, 91) if grid is None else np.asarray(grid)
+    p_late = np.asarray(p_late, dtype=float)
+    delay = np.asarray(delay, dtype=float)
+    best_tau, best_cost = 0.5, np.inf
+    for tau in grid:
+        idx = np.where(p_late > tau, IDX_EXPRESS, IDX_NONE)
+        cost = float(realised_cost(idx, delay, penalty).sum())
+        if cost < best_cost:
+            best_tau, best_cost = float(tau), cost
+    return best_tau, best_cost
+
+
+def bootstrap_diff(
+    a: np.ndarray, b: np.ndarray, n_boot: int = 2000, seed: int = 0, alpha: float = 0.05
+) -> dict:
+    """Paired bootstrap of ``mean(a - b)`` with a percentile confidence interval.
+
+    A 3% cost gap on 27k orders is only interesting if the interval excludes
+    zero, so every headline delta in the report carries one of these.
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    diff = a - b
+    rng = np.random.default_rng(seed)
+    n = len(diff)
+    means = np.empty(n_boot, dtype=float)
+    for i in range(n_boot):
+        means[i] = diff[rng.integers(0, n, n)].mean()
+    lo, hi = np.percentile(means, [100 * alpha / 2, 100 * (1 - alpha / 2)])
+    return {
+        "mean_diff": float(diff.mean()),
+        "ci_low": float(lo),
+        "ci_high": float(hi),
+        "significant": bool(lo > 0 or hi < 0),
+    }
+
+
+def action_mix(action_idx: np.ndarray, actions: tuple[Action, ...] = ACTIONS) -> dict:
+    """Share of orders sent to each action."""
+    idx = np.asarray(action_idx)
+    return {a.name: float((idx == i).mean()) for i, a in enumerate(actions)}

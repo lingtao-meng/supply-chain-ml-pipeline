@@ -8,6 +8,7 @@ scripts work on exactly the same data as the notebook.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -25,6 +26,32 @@ CAT_COLS = [
 DATE_COL = "order date (DateOrders)"
 SHIP_COL = "shipping date (DateOrders)"
 SCHED_COL = "Days for shipment (scheduled)"
+
+DATA_FILENAME = "DataCoSupplyChainDataset.csv"
+
+
+def find_data(explicit: str | Path | None = None) -> Path:
+    """Locate the DataCo CSV: CLI flag → ``data/`` → kagglehub cache.
+
+    The kagglehub fallback matters because ``kagglehub.dataset_download``
+    caches under ``~/.cache/kagglehub`` and the data is 91 MB, which nobody
+    should have to copy by hand.
+    """
+    candidates: list[Path] = []
+    if explicit:
+        candidates.append(Path(explicit))
+    root = Path(__file__).resolve().parents[1]
+    candidates.append(root / "data" / DATA_FILENAME)
+    candidates.append(Path("data") / DATA_FILENAME)
+    candidates.extend(sorted(Path.home().glob(f".cache/kagglehub/datasets/**/{DATA_FILENAME}")))
+    for path in candidates:
+        if path.is_file():
+            return path
+    raise FileNotFoundError(
+        "DataCoSupplyChainDataset.csv not found. Download it first:\n"
+        "  python -c \"import kagglehub; kagglehub.dataset_download('evilspirit05/datasupplychain')\"\n"
+        "or pass --data /path/to/DataCoSupplyChainDataset.csv"
+    )
 
 
 @dataclass
@@ -57,8 +84,22 @@ def load_orders(path: str) -> pd.DataFrame:
     return df
 
 
-def build_features(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:
-    """Order-time-only features (no leakage from post-shipment fields)."""
+def fit_encoders(df: pd.DataFrame) -> dict[str, LabelEncoder]:
+    """Fit one label encoder per categorical column.
+
+    Kept separate from ``build_features`` so the encoders can be fitted on the
+    training window only and reused at serving time (the Streamlit app needs
+    exactly this).
+    """
+    return {col: LabelEncoder().fit(df[col].astype(str)) for col in CAT_COLS}
+
+
+def make_features(df: pd.DataFrame, encoders: dict[str, LabelEncoder]) -> pd.DataFrame:
+    """Build the 18 order-time features with *pre-fitted* encoders.
+
+    Categories never seen during training map to ``-1`` instead of raising,
+    which is what happens in production the first time a new market appears.
+    """
     feat = df[CAT_COLS].copy()
     od = df[DATE_COL]
 
@@ -82,9 +123,20 @@ def build_features(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:
     feat["qty_x_ship"] = qty * sched
 
     for col in CAT_COLS:
-        feat[f"{col}_enc"] = LabelEncoder().fit_transform(feat[col].astype(str))
+        mapping = {cat: i for i, cat in enumerate(encoders[col].classes_)}
+        feat[f"{col}_enc"] = feat[col].astype(str).map(mapping).fillna(-1).astype(int)
 
     feat = feat.drop(columns=CAT_COLS).fillna(0.0)
+    return feat
+
+
+def build_features(
+    df: pd.DataFrame, encoders: dict[str, LabelEncoder] | None = None
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Order-time-only features (no leakage from post-shipment fields)."""
+    if encoders is None:
+        encoders = fit_encoders(df)
+    feat = make_features(df, encoders)
 
     y = df["delay_days"].to_numpy(dtype=float)
     return feat, y

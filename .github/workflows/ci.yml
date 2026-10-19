@@ -6,22 +6,68 @@ on:
   pull_request:
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install ruff
+        run: pip install -q "ruff>=0.6"
+      - name: Lint
+        run: ruff check .
+      - name: Byte-compile
+        run: python -m compileall -q src scripts app tests
 
-      - name: Install dependencies
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test dependencies (no dataset needed)
         run: |
           python -m pip install --upgrade pip
-          pip install numpy pandas scikit-learn joblib
-
-      - name: Byte-compile source
-        run: python -m compileall -q src scripts
-
-      - name: Unit tests (no dataset required)
+          pip install -q numpy pandas scikit-learn scipy joblib
+      - name: Unit tests
         run: python -m unittest discover -s tests -v
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -q -r requirements.txt
+      - name: Synthetic dataset
+        run: python tests/fixtures/make_synthetic_dataco.py /tmp/dataco_small.csv
+      - name: Full pipeline on synthetic data
+        run: |
+          python scripts/refresh_cost_analysis.py \
+            --data /tmp/dataco_small.csv --fast --no-cache \
+            --outdir /tmp/results --images /tmp/images
+      - name: Check artifacts
+        run: |
+          test -f /tmp/results/summary.md
+          test -f /tmp/results/policy_comparison.csv
+          test -f /tmp/results/diagnostics.json
+          test -f /tmp/images/policy_costs.png
+          test -f models/model_bundle.joblib
+      - name: Streamlit app smoke test
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          app = AppTest.from_file("app/app.py", default_timeout=120).run()
+          assert not app.exception, app.exception
+          print("app rendered, metric widgets:", len(app.metric))
+          PY
