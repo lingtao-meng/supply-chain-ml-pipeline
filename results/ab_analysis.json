@@ -1,0 +1,93 @@
+{
+  "mode": "simulated",
+  "overall": {
+    "n_control": 4000,
+    "n_treatment": 4000,
+    "mean_control": 0.76125,
+    "mean_treatment": -0.4929137232372579,
+    "reduction": 1.2541637232372578,
+    "ci_low": 1.1963415775674475,
+    "ci_high": 1.311985868907068,
+    "p_value": 0.0,
+    "relative_reduction": 1.6475057119701253
+  },
+  "srm": {
+    "n_control": 4000,
+    "n_treatment": 4000,
+    "observed_share": 0.5,
+    "p_value": 1.0,
+    "ok": true
+  },
+  "by_mode": [
+    {
+      "shipping_mode": "First Class",
+      "n_control": 1000,
+      "n_treatment": 1000,
+      "mean_control": 1.0,
+      "mean_treatment": -0.003000151934148823,
+      "reduction": 1.003000151934149,
+      "ci_low": 0.9870829565528433,
+      "ci_high": 1.0189173473154547,
+      "p_value": 0.0,
+      "relative_reduction": 1.003000151934149,
+      "break_even": 0.5,
+      "decision": "roll out",
+      "net_value_per_order": 100.60003038682979,
+      "true_effect": 0.0
+    },
+    {
+      "shipping_mode": "Same Day",
+      "n_control": 1000,
+      "n_treatment": 1000,
+      "mean_control": 0.0,
+      "mean_treatment": -0.03675367279575936,
+      "reduction": 0.03675367279575936,
+      "ci_low": 0.021118301247632844,
+      "ci_high": 0.05238904434388588,
+      "p_value": 4.488065988508147e-06,
+      "relative_reduction": NaN,
+      "break_even": NaN,
+      "decision": "never pays",
+      "net_value_per_order": -92.64926544084813,
+      "true_effect": 0.0
+    },
+    {
+      "shipping_mode": "Second Class",
+      "n_control": 1000,
+      "n_treatment": 1000,
+      "mean_control": 2.032,
+      "mean_treatment": 0.053131733492387055,
+      "reduction": 1.978868266507613,
+      "ci_low": 1.8539571599878693,
+      "ci_high": 2.103779373027357,
+      "p_value": 3.085466012593847e-173,
+      "relative_reduction": 0.9738524933600458,
+      "break_even": 0.63,
+      "decision": "roll out",
+      "net_value_per_order": 295.7736533015226,
+      "true_effect": 0.0
+    },
+    {
+      "shipping_mode": "Standard Class",
+      "n_control": 1000,
+      "n_treatment": 1000,
+      "mean_control": 0.013,
+      "mean_treatment": -1.9850328017115102,
+      "reduction": 1.99803280171151,
+      "ci_low": 1.8746814628419302,
+      "ci_high": 2.12138414058109,
+      "p_value": 1.3265670002391211e-179,
+      "relative_reduction": 153.6948309008854,
+      "break_even": 1.51,
+      "decision": "roll out",
+      "net_value_per_order": 299.60656034230203,
+      "true_effect": 0.0
+    }
+  ],
+  "params": {
+    "penalty_per_day": 200.0,
+    "express_cost": 100.0,
+    "n_control": 4000,
+    "n_treatment": 4000
+  }
+}
