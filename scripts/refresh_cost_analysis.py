@@ -25,6 +25,8 @@ Outputs
     results/sensitivity.csv
     results/capacity_curve.csv
     results/budget_curve.csv
+    results/robustness.csv
+    results/robustness_summary.csv
     results/cost_model_check.csv
     results/mode_table.csv
     results/diagnostics.json
@@ -37,6 +39,7 @@ Outputs
     images/capacity.png
     images/budget.png
     images/decision_map.png
+    images/robustness.png
 """
 
 from __future__ import annotations
@@ -492,6 +495,78 @@ def main() -> int:
         print(f"  {star} {r['policy']:<28s} {r['mean_diff_per_order']:+8.2f}/order "
               f"[{r['ci_low']:+7.2f}, {r['ci_high']:+7.2f}]")
 
+    # ------------------------------------------------------------------ robustness
+    print("\n== robustness: uncertainty in the cost parameters ==")
+    scenario_sets = {
+        "wide band (penalty 100-400, express 50-150)": ([100, 200, 300, 400], [50, 100, 150]),
+        "narrow band (nominal +/-25%)": ([150, 200, 250], [75, 100, 125]),
+    }
+    idx_nominal = strategies["pmf exact (lookup)"]
+    orders_ix = np.arange(n)
+    rob_rows = []
+    rob_summary = []
+    for set_name, (penalties, express_costs) in scenario_sets.items():
+        idx_robust = policy.policy_minimax_regret(pmf_lookup, penalties, express_costs)
+        scenario_cost = policy.scenario_cost_matrix(pmf_lookup, penalties, express_costs)
+        scenario_best = scenario_cost.min(axis=2)
+        regret_nominal = scenario_cost[:, orders_ix, idx_nominal] - scenario_best
+        regret_robust = scenario_cost[:, orders_ix, idx_robust] - scenario_best
+
+        scenario_index = 0
+        set_rows = []
+        for p in penalties:
+            for c in express_costs:
+                actions = (policy.NONE, policy.NOTIFY, policy.Action("express", cost=c, reduction=2.0))
+                cost_nom = float(realised(idx_nominal, delay, p, actions).sum())
+                cost_rob = float(realised(idx_robust, delay, p, actions).sum())
+                cost_opt = float(
+                    realised(
+                        policy.policy_expected_cost_pmf(pmf_lookup, p, actions=actions),
+                        delay, p, actions,
+                    ).sum()
+                )
+                set_rows.append(
+                    {
+                        "scenario_set": set_name,
+                        "penalty_per_day": p,
+                        "express_cost": c,
+                        "cost_scenario_optimal": cost_opt,
+                        "cost_nominal_policy": cost_nom,
+                        "cost_robust_policy": cost_rob,
+                        "regret_nominal_expected": float(regret_nominal[scenario_index].mean()),
+                        "regret_robust_expected": float(regret_robust[scenario_index].mean()),
+                    }
+                )
+                scenario_index += 1
+        rob_rows.extend(set_rows)
+
+        nominal_row = next(
+            row for row in set_rows if row["penalty_per_day"] == 200 and row["express_cost"] == 100
+        )
+        mix = policy.action_mix(idx_robust)
+        rob_summary.append(
+            {
+                "scenario_set": set_name,
+                "worst_regret_nominal": float(regret_nominal.max(axis=0).mean()),
+                "worst_regret_robust": float(regret_robust.max(axis=0).mean()),
+                "mean_regret_nominal": float(regret_nominal.mean()),
+                "mean_regret_robust": float(regret_robust.mean()),
+                "premium_at_nominal": float(nominal_row["cost_robust_policy"] - nominal_row["cost_nominal_policy"]),
+                "robust_none_rate": mix["none"],
+                "robust_notify_rate": mix["notify"],
+                "robust_express_rate": mix["express"],
+            }
+        )
+    rob = pd.DataFrame(rob_rows)
+    rob_summary_df = pd.DataFrame(rob_summary)
+    rob.to_csv(results_dir / "robustness.csv", index=False)
+    rob_summary_df.to_csv(results_dir / "robustness_summary.csv", index=False)
+    for _, row in rob_summary_df.iterrows():
+        print(f"  {row['scenario_set']}:")
+        print(f"    worst-case regret ${row['worst_regret_nominal']:.2f} -> ${row['worst_regret_robust']:.2f} /order, "
+              f"premium at nominal ${row['premium_at_nominal']:,.0f}, "
+              f"mix none/notify/express {row['robust_none_rate']:.0%}/{row['robust_notify_rate']:.0%}/{row['robust_express_rate']:.0%}")
+
     # ------------------------------------------------------------------ sensitivity
     print("\n== sensitivity: when is the model worth it? ==")
     penalties = [100, 200, 300, 400]
@@ -646,6 +721,26 @@ def main() -> int:
         axes[1].legend(fontsize=8, loc="lower right")
         fig.tight_layout()
         fig.savefig(images_dir / "distribution_example.png", dpi=150)
+        plt.close(fig)
+
+        # 4b. robustness: regret across cost scenarios, two uncertainty bands
+        fig, axes = plt.subplots(1, 2, figsize=(12, 3.8), sharey=True)
+        for ax, (set_name, group) in zip(axes, rob.groupby("scenario_set", sort=False)):  # noqa: B905 (py3.9 compat)
+            labels = [
+                f"p{p}/c{c}"
+                for p, c in zip(group["penalty_per_day"], group["express_cost"])  # noqa: B905 (py3.9 compat)
+            ]
+            x = np.arange(len(labels))
+            ax.bar(x - 0.2, group["regret_nominal_expected"], width=0.4,
+                   label="nominal policy", color="#9b3b3b")
+            ax.bar(x + 0.2, group["regret_robust_expected"], width=0.4,
+                   label="minimax-regret policy", color="#1f6f78")
+            ax.set_xticks(x, labels, rotation=45, ha="right", fontsize=7)
+            ax.set_title(set_name, fontsize=9)
+            ax.set_ylabel("mean regret vs scenario optimum (USD/order)")
+            ax.legend(fontsize=7)
+        fig.tight_layout()
+        fig.savefig(images_dir / "robustness.png", dpi=150)
         plt.close(fig)
 
         # 5. capacity curve: where ranking quality shows up
@@ -840,6 +935,19 @@ def main() -> int:
         f"within {abs(1 - pmf_c['total_cost'] / bin_c['total_cost']):.2%} of the optimum. "
         "The real gap is the 3-quantile reconstruction of a 7-atom distribution.",
         "",
+        "## Robustness to cost-parameter uncertainty",
+        "",
+        "The nominal policy is optimal at $200/day and $100 express. The minimax-regret rule",
+        "trades nominal cost for a cap on the worst case — how much depends on the uncertainty band:",
+        "",
+        df_to_markdown(rob_summary_df, ".2f"),
+        "",
+        "With a wide band the robust rule becomes a blunt hedge (express everything except Same Day):",
+        "worst-case regret falls ~13% but it costs $136k more at the nominal scenario.",
+        "With a +/-25% band the nominal policy is already minimax-optimal, so robustness is free.",
+        "Read it as: the value of robustness is a function of how uncertain the economics are —",
+        "and under wide uncertainty the model stops mattering at all.",
+        "",
         "## Parameter sensitivity: where the pmf gain comes from",
         "",
         "pmf cost advantage over the 3-point quantile grid (positive = pmf cheaper):",
@@ -900,6 +1008,14 @@ def main() -> int:
         "The first $500k buys notifications for almost every order; the next $500k upgrades them",
         "to express; $1.5M already reaches the unconstrained optimum ($1.27M of action spend).",
         "That is the order a planner should spend in — not the order the model scores highest.",
+        "",
+        "## Related outputs",
+        "",
+        "- `drift_report.csv` / `drift_summary.json` — `scripts/drift_report.py` (monthly PSI)",
+        "- `intervention_*.csv`, `ab_sample_size.csv` — `scripts/intervention_analysis.py`",
+        "- `pacing.csv` — `scripts/pacing_simulation.py` (multi-period budget)",
+        "- `robustness.csv` / `robustness_summary.csv` — this script (minimax regret)",
+        "- `python scripts/monitor.py --reference ref.csv --current new.csv` — online PSI check",
         "",
     ]
     (results_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8")

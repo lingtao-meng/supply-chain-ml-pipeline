@@ -24,52 +24,19 @@ import json
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src import pipeline  # noqa: E402
+from src import monitoring, pipeline  # noqa: E402
 
-CATEGORICAL = ["Shipping Mode", "Market", "Category Name", "Customer Segment", "Type"]
-NUMERIC = {"order_value": "Order Item Total", "delay_days": "delay_days"}
-PSI_MODERATE, PSI_HIGH = 0.1, 0.25
-
-
-def psi(expected: np.ndarray, actual: np.ndarray, eps: float = 1e-6) -> float:
-    """Population stability index between two count/share vectors."""
-    expected = np.clip(np.asarray(expected, dtype=float), eps, None)
-    actual = np.clip(np.asarray(actual, dtype=float), eps, None)
-    expected = expected / expected.sum()
-    actual = actual / actual.sum()
-    return float(np.sum((actual - expected) * np.log(actual / expected)))
-
-
-def categorical_psi(reference: pd.Series, current: pd.Series) -> float:
-    categories = sorted(set(reference.dropna()) | set(current.dropna()))
-    expected = np.array([(reference == cat).mean() for cat in categories])
-    actual = np.array([(current == cat).mean() for cat in categories])
-    return psi(expected, actual)
-
-
-def numeric_psi(reference: pd.Series, current: pd.Series, bins: int = 10) -> float:
-    """PSI on quantile bins taken from the reference window."""
-    reference = reference.dropna().to_numpy(dtype=float)
-    current = current.dropna().to_numpy(dtype=float)
-    if len(reference) == 0 or len(current) == 0:
-        return float("nan")
-    edges = np.unique(np.quantile(reference, np.linspace(0, 1, bins + 1)))
-    if len(edges) < 3:  # constant (or near-constant) reference: use a tolerance band
-        centre = float(reference[0])
-        spread = max(float(np.std(reference)), 0.5)
-        edges = np.array([-np.inf, centre - spread, centre + spread, np.inf])
-    else:
-        edges[0] = -np.inf
-        edges[-1] = np.inf
-    expected = np.histogram(reference, bins=edges)[0]
-    actual = np.histogram(current, bins=edges)[0]
-    return psi(expected, actual)
+CATEGORICAL = monitoring.DEFAULT_CATEGORICAL
+NUMERIC = monitoring.DEFAULT_NUMERIC
+PSI_MODERATE, PSI_HIGH = monitoring.PSI_MODERATE, monitoring.PSI_HIGH
+psi = monitoring.psi
+categorical_psi = monitoring.categorical_psi
+numeric_psi = monitoring.numeric_psi
 
 
 def build_report(df: pd.DataFrame, reference_frac: float = 0.70) -> tuple[pd.DataFrame, dict]:
@@ -107,6 +74,11 @@ def build_report(df: pd.DataFrame, reference_frac: float = 0.70) -> tuple[pd.Dat
     peak = (
         post_reference.groupby("feature")["psi"].max().sort_values(ascending=False).to_dict()
     )
+    target_peak = float(peak.get("delay_days", float("nan")))
+    feature_peak = max(
+        (value for feature, value in peak.items() if feature != "delay_days"), default=0.0
+    )
+    decision = monitoring.recommend(feature_peak, target_peak)
     summary = {
         "reference_rows": int(cut),
         "reference_end": str(df[pipeline.DATE_COL].iloc[cut].date()),
@@ -118,6 +90,8 @@ def build_report(df: pd.DataFrame, reference_frac: float = 0.70) -> tuple[pd.Dat
             )
             for feature, value in peak.items()
         },
+        "recommendation": decision["action"],
+        "recommendation_reason": decision["reason"],
     }
     return report, summary
 
@@ -144,6 +118,7 @@ def main() -> int:
     print(f"reference: first {args.reference_frac:.0%} of orders, ends {summary['reference_end']}")
     for feature, value in summary["max_psi_after_reference"].items():
         print(f"  {feature:<18s} max PSI {value:7.3f}  ({summary['verdict'][feature]})")
+    print(f"  recommendation: {summary['recommendation']} — {summary['recommendation_reason']}")
 
     try:
         import matplotlib

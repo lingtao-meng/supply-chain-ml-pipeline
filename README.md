@@ -30,6 +30,7 @@ make reproduce   # 训练 → 诊断 → 成本表 → results/ + 模型包
 | 4 | **决策规则比模型类别重要** | 同一测试集上，11 个策略成本从 $2.12M（事后最优）到 $4.88M（不干预） |
 | 5 | 收益主要来自**不给不该加急的订单加急** | 最优策略按运输方式 3 行规则；分位策略多干预 5.4 个百分点，多花 6.1% |
 | 6 | **干预率是成本参数的函数**，不是模型属性 | 固定 $200/天 → 干预 94%；按订单金额 1%/天 → 干预 0%；罚金 $100/加急 $100 时加急 0% |
+| 7 | 成本参数和干预效果的不确定性会改变结论 | 宽区间下 minimax 退化为「除 Same Day 全加急」；加急需减 0.5–1.5 天才回本；A/B 检测 0.2 天需 ~878 单/组 |
 
 > **v1 → v2 修正了两个口径问题**：二分类基线用了 `p50 > 0` 这个稻草人阈值；用 3 个分位点拼分布来评估一个 7 原子目标。详见文末「从 v1 到 v2」。
 
@@ -267,18 +268,135 @@ Market 在 2016 年切到 USCA / Pacific Asia，2017 年又切回 Europe / LATAM
 
 ---
 
+## 结果 9：成本参数不确定时的鲁棒决策
+
+![robustness](images/robustness.png)
+
+基准策略在 $200/天、加急 $100 时最优。如果这两个数本身不确定，可以用 minimax regret：
+对每单选「最坏情景下后悔值最小」的动作（后悔 = 相对该情景最优动作多花的钱）。
+
+| 不确定性区间 | 最坏后悔（基准） | 最坏后悔（鲁棒） | 名义情景溢价 | 鲁棒动作分布 |
+|---|---|---|---|---|
+| 宽（$100–400/天，$50–150） | $92.22/单 | **$80.31/单** | +$136,200 | 不干预 6% / 通知 0% / 加急 94% |
+| 窄（±25%） | $26.08/单 | $26.08/单 | $0 | 6% / 59% / 35% |
+
+宽区间下鲁棒策略退化成「除 Same Day 外全加急」：最坏后悔降 13%，但名义情景多花 $136k。
+窄区间下基准策略本身就是 minimax 最优。**鲁棒性的价值取决于你对成本参数有多不确定；
+不确定性足够大时，模型会消失，只剩一个对冲规则。**
+
+---
+
+## 结果 10：干预效果是假设——回本点与 A/B 样本量
+
+![intervention](images/intervention.png)
+
+数据里没有处理组/对照组，所以「加急减 2 天」无法从数据估计。能做的两件事：
+
+**① 回本点**（$200/天、加急 $100）
+
+| 运输方式 | E[延迟+] | 加急至少要减 |
+|---|---|---|
+| First Class | 1.00 天 | 0.50 天 |
+| Second Class | 2.00 天 | 0.63 天 |
+| Standard Class | 0.60 天 | **1.51 天** |
+| Same Day | 0 天 | 永不回本 |
+
+**② 假设错了要付多少**：若真实效果是 2 天，但策略只假设 0 / 1 天，成本升到 $3.44M / $3.28M；
+假设 ≥2 天时策略不再变化（$3.06M）。**低估效果比高估更贵。**
+
+**③ 做 A/B 需要多大样本**（延迟 SD 1.50 天，80% power，α=0.05）：
+
+| 要检测的缩短 | 每组订单数 |
+|---|---|
+| 0.1 天 | 3,511 |
+| 0.2 天 | 878 |
+| 0.5 天 | 141 |
+
+检测 0.2 天需要约 878 单/组——这个量级在真实业务里是可做的，也是把「假设」变成「证据」的最小实验。
+
+---
+
+## 结果 11：多期预算节奏——一次性分配有多贵
+
+![pacing](images/pacing.png)
+
+测试期 8 个月。把预算按月释放，和一次性全局分配比：
+
+| 总预算 | 全局（有前瞻） | 月度（不结转） | 月度 + 结转 |
+|---|---|---|---|
+| $500k | $3,457,000 | $3,546,280 | $3,546,240 |
+| $1M | $3,194,960 | $3,250,440 | $3,249,560 |
+| $1.5M | $3,058,600 | $3,153,960 | $3,121,640 |
+
+$500k 时差距最大：月度节奏的迟到召回只有 85%，全局是 98.5%——预算紧时，早期月份会把钱花在
+「当时看起来最值」的订单上，后面真正高收益的订单没钱了。结转能回收约 $32k（$1.5M 时），
+但补不回信息差。
+
+---
+
+## 结果 12：在线监控——什么时候该重训练
+
+`scripts/monitor.py` 把 PSI 做成可接 cron 的检查，输出三种动作：
+
+| 条件 | 动作 | 退出码 |
+|---|---|---|
+| 目标分布 PSI > 0.25 | retrain | 2 |
+| 仅特征 PSI > 0.25 | reweight / segment | 1 |
+| 其他 | monitor / stable | 0 |
+
+在真实切分上（前 70% 参考、后 30% 新批次）：Market / Category 高漂移，
+`delay_days` PSI **0.0001**，建议 **reweight**（不是重训练）。这正对应结果 8：
+构成变了，行为没变。
+
+---
+
+## 三个入口：脚本 / HTTP / UI
+
+| 入口 | 命令 | 适合 |
+|---|---|---|
+| 批量 CLI | `python scripts/score_orders.py --input orders.csv --out plan.csv --budget 500000` | 离线跑批 |
+| HTTP API | `uvicorn api.main:app --port 8000` | 接上游系统 |
+| Streamlit | `streamlit run app/app.py` | 单笔演示 + 批量上传 |
+
+三个入口共用 `src/scoring.py`，不会出现「demo 和脚本判断不一致」。
+
+```bash
+curl -s localhost:8000/score -H 'content-type: application/json' -d '{
+  "orders": [{
+    "type": "DEBIT", "category_name": "Fishing", "department_name": "Fan Shop",
+    "market": "Europe", "shipping_mode": "Second Class", "customer_segment": "Consumer",
+    "order_date": "2017-12-15", "scheduled_days": 2, "quantity": 3,
+    "unit_price": 80, "discount_rate": 0.1
+  }],
+  "penalty": 200
+}'
+```
+
+```bash
+make reproduce                 # 先生成 models/model_bundle.joblib
+docker build -t delay-api .
+docker run -p 8000:8000 delay-api
+```
+
+---
+
 ## 复现
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-service.txt   # 只有跑 HTTP API / Docker 时需要
 
 make data        # 或手动放 data/DataCoSupplyChainDataset.csv
 make reproduce   # 全部数字：results/ + images/ + models/model_bundle.joblib
-make test        # 55 个单测，不需要数据集
+make test        # 84 个单测，不需要数据集
 make smoke       # 合成数据端到端（CI 同款）
 make drift       # 月度 PSI 漂移报告
-make app         # Streamlit 演示
+make app         # Streamlit 演示（单笔 + 批量）
+make api         # FastAPI：uvicorn api.main:app --port 8000
+make pacing      # 多期预算节奏
+make intervention # 干预回本点 + A/B 样本量
+make monitor REF=reference.csv CUR=new.csv   # PSI 监控（退出码 0/1/2）
 
 # 批量评分：CSV → 预测 + 建议动作 + 期望成本
 python scripts/score_orders.py --input orders.csv --out plan.csv --budget 500000
@@ -295,15 +413,22 @@ python scripts/score_orders.py --input orders.csv --out plan.csv --budget 500000
 
 ```
 src/pipeline.py                    数据加载、18 维特征、时间切分、编码器
-src/policy.py                      统一成本函数、11 个策略、pmf/预算决策、bootstrap
+src/policy.py                      统一成本函数、11 个策略、pmf/预算/鲁棒决策、bootstrap
+src/scoring.py                     共享评分：CLI / API / App 同一套逻辑
+src/monitoring.py                  PSI、告警级别、重训练建议
 scripts/refresh_cost_analysis.py   一键复现：训练 → 天花板诊断 → 成本表 → 模型包
 scripts/score_orders.py            批量评分：CSV → 预测 + 建议动作 + 期望成本
 scripts/drift_report.py            月度 PSI 漂移报告（构成 vs 行为）
+scripts/monitor.py                 在线 PSI 检查（cron 友好，带退出码）
+scripts/intervention_analysis.py   回本点、效果误设成本、A/B 样本量
+scripts/pacing_simulation.py       多期预算节奏模拟
+api/main.py                        FastAPI /score 服务
+Dockerfile                         容器镜像
 app/app.py                         Streamlit：输入订单 → 分布 → 期望成本 → 动作
-tests/                             55 个单测 + 合成数据夹具（CI 用）
+tests/                             84 个单测 + 合成数据夹具（CI 用）
 notebooks/                         探索过程（成本口径已统一到 src/policy.py）
 results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv、drift_report.csv…
-images/                            8 张由脚本生成的图 + notebook 探索图
+images/                            11 张由脚本生成的图 + notebook 探索图
 ```
 
 ---
@@ -330,6 +455,10 @@ v2.1 又补了四块：**预算约束的增量贪心**（修掉了「每单只�
 **批量评分 CLI**（`scripts/score_orders.py`）、**决策地图**（干预率随成本参数的阶跃变化），
 以及**月度 PSI 漂移报告**（区分构成漂移与行为漂移）。测试从 33 增加到 55。
 
+v2.2 再把决策层做厚：**共享评分模块**（CLI / FastAPI / Streamlit 同一套逻辑）、
+**minimax-regret 鲁棒决策**、**干预效果回本点与 A/B 样本量**、**多期预算节奏**、
+**可接 cron 的 PSI 监控**，以及 Docker 镜像。测试 55 → 84。
+
 ---
 
 ## 局限与下一步
@@ -340,13 +469,13 @@ v2.1 又补了四块：**预算约束的增量贪心**（修掉了「每单只�
 2. **干预效果是假设**：加急减 2 天、通知罚金 ×0.6 都没有因果证据。真实场景需要 A/B 或 uplift 模型估计异质处理效应。
 3. **数据本身没有单笔信号**：换成有真实运营信息的数据（承运商、线路、仓库、天气、节假日）才有 ML 的用武之地。
 4. **pmf 模型是 HistGB 7 分类**：可以对比有序回归（ordinal）、LightGBM/CatBoost 多分类、conformal 预测集。
-5. **产能/预算曲线是静态一次性分配**：真实调度是多期、可补货、有承诺时效窗口的动态问题。
+5. **产能/预算曲线是静态一次性分配**：结果 11 的月度节奏只是简化版，真实调度还有补货、承诺时效窗口和多级网络。
 
 **工程层面**
 
-6. **没有服务化**：目前是脚本 + Streamlit；下一步 FastAPI + Docker，加批量 CSV 上传与决策导出。
+6. **服务化只到 demo 级**：已有 FastAPI / Docker / 批量上传，但缺鉴权、限流、可观测性和异步队列。
 7. **没有实验追踪与数据版本**：可接 MLflow + DVC，把每次成本表和数据指纹绑定。
-8. **漂移监控目前是离线月度 PSI**（见结果 8）；下一步是在线监控、告警阈值与自动重训练触发。
+8. **漂移监控已能告警（monitor CLI），但还没接调度器**：下一步接 cron/Airflow、按市场分层告警，并和重训练流水线联动。
 
 ---
 
