@@ -1014,6 +1014,7 @@ def main() -> int:
         "- `drift_report.csv` / `drift_summary.json` — `scripts/drift_report.py` (monthly PSI)",
         "- `intervention_*.csv`, `ab_sample_size.csv` — `scripts/intervention_analysis.py`",
         "- `pacing.csv` — `scripts/pacing_simulation.py` (multi-period budget)",
+        "- `ab_analysis.json` / `ab_by_mode.csv` — `scripts/ab_analysis.py` (A/B framework)",
         "- `robustness.csv` / `robustness_summary.csv` — this script (minimax regret)",
         "- `python scripts/monitor.py --reference ref.csv --current new.csv` — online PSI check",
         "",
