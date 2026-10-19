@@ -43,6 +43,9 @@ intervention:  ## break-even effect and A/B sample size
 monitor:  ## PSI monitoring (REF=old.csv CUR=new.csv)
 	$(PY) scripts/monitor.py --reference $(REF) --current $(CUR)
 
+ab:  ## A/B analysis (simulated if no --input is given)
+	$(PY) scripts/ab_analysis.py
+
 api:  ## run the HTTP service (requires `make reproduce` first)
 	$(PY) -m uvicorn api.main:app --reload --port 8000
 

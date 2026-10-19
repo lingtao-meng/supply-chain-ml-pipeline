@@ -350,6 +350,32 @@ $500k 时差距最大：月度节奏的迟到召回只有 85%，全局是 98.5%�
 
 ---
 
+## 结果 13：A/B 分析框架——把假设变成可检验的结论
+
+![ab](images/ab_analysis.png)
+
+观察数据无法估计「加急到底减几天」。这个框架做三件事：
+
+1. **估计**：Welch t 检验给出 reduction 和 95% CI；
+2. **防呆**：SRM 检查（随机化比例失衡时，任何效应都不可信）；
+3. **决策**：按运输方式分层，用 **CI 下界 vs 回本点** 判断——下界高于回本点才上线，
+   上界低于回本点则不上，跨过回本点则「不明确，继续收集」。
+
+没有真实实验数据，所以内置模拟器从实际延迟分布生成 A/B（已知效果），验证估计器与决策规则：
+
+| 运输方式 | 模拟真实效果 | 估计 [95% CI] | 回本点 | 决策 | 每单净价值 |
+|---|---|---|---|---|---|
+| First Class | 1.00d | 1.00 [0.99, 1.02] | 0.50d | 上线 | +$101 |
+| Second Class | 2.00d | 1.98 [1.85, 2.10] | 0.63d | 上线 | +$296 |
+| Standard Class | 2.00d | 2.00 [1.87, 2.12] | 1.51d | 上线 | +$300 |
+| Same Day | 0.05d | 0.04 [0.02, 0.05] | 永不 | 不上线 | −$93 |
+
+不只有点估计：200 次重复模拟的 CI 覆盖率是 **95.5%**，说明区间不是装饰。
+真实实验接进来只需 `python scripts/ab_analysis.py --input ab_test.csv`
+（列：`delay_days`、`treated`，可选 `shipping_mode`）。
+
+---
+
 ## 三个入口：脚本 / HTTP / UI
 
 | 入口 | 命令 | 适合 |
@@ -389,7 +415,7 @@ pip install -r requirements-service.txt   # 只有跑 HTTP API / Docker 时需�
 
 make data        # 或手动放 data/DataCoSupplyChainDataset.csv
 make reproduce   # 全部数字：results/ + images/ + models/model_bundle.joblib
-make test        # 84 个单测，不需要数据集
+make test        # 98 个单测，不需要数据集
 make smoke       # 合成数据端到端（CI 同款）
 make drift       # 月度 PSI 漂移报告
 make app         # Streamlit 演示（单笔 + 批量）
@@ -397,6 +423,7 @@ make api         # FastAPI：uvicorn api.main:app --port 8000
 make pacing      # 多期预算节奏
 make intervention # 干预回本点 + A/B 样本量
 make monitor REF=reference.csv CUR=new.csv   # PSI 监控（退出码 0/1/2）
+make ab          # A/B 分析（默认模拟；--input 接真实实验）
 
 # 批量评分：CSV → 预测 + 建议动作 + 期望成本
 python scripts/score_orders.py --input orders.csv --out plan.csv --budget 500000
@@ -416,19 +443,21 @@ src/pipeline.py                    数据加载、18 维特征、时间切分、
 src/policy.py                      统一成本函数、11 个策略、pmf/预算/鲁棒决策、bootstrap
 src/scoring.py                     共享评分：CLI / API / App 同一套逻辑
 src/monitoring.py                  PSI、告警级别、重训练建议
+src/experiment.py                  A/B：Welch、SRM、分层效应、模拟器
 scripts/refresh_cost_analysis.py   一键复现：训练 → 天花板诊断 → 成本表 → 模型包
 scripts/score_orders.py            批量评分：CSV → 预测 + 建议动作 + 期望成本
 scripts/drift_report.py            月度 PSI 漂移报告（构成 vs 行为）
 scripts/monitor.py                 在线 PSI 检查（cron 友好，带退出码）
 scripts/intervention_analysis.py   回本点、效果误设成本、A/B 样本量
 scripts/pacing_simulation.py       多期预算节奏模拟
+scripts/ab_analysis.py             A/B 分析（真实输入或模拟验证）
 api/main.py                        FastAPI /score 服务
 Dockerfile                         容器镜像
 app/app.py                         Streamlit：输入订单 → 分布 → 期望成本 → 动作
-tests/                             84 个单测 + 合成数据夹具（CI 用）
+tests/                             98 个单测 + 合成数据夹具（CI 用）
 notebooks/                         探索过程（成本口径已统一到 src/policy.py）
 results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv、drift_report.csv…
-images/                            11 张由脚本生成的图 + notebook 探索图
+images/                            12 张由脚本生成的图 + notebook 探索图
 ```
 
 ---
@@ -458,6 +487,8 @@ v2.1 又补了四块：**预算约束的增量贪心**（修掉了「每单只�
 v2.2 再把决策层做厚：**共享评分模块**（CLI / FastAPI / Streamlit 同一套逻辑）、
 **minimax-regret 鲁棒决策**、**干预效果回本点与 A/B 样本量**、**多期预算节奏**、
 **可接 cron 的 PSI 监控**，以及 Docker 镜像。测试 55 → 84。
+
+v2.3 再补上 **A/B 分析框架**（Welch + SRM + 分层 + 模拟器 + 上线决策），测试 84 → 98。
 
 ---
 

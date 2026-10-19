@@ -242,6 +242,27 @@ def scenario_cost_matrix(
     return np.stack(matrices)
 
 
+def break_even_reduction(
+    pmf: np.ndarray,
+    penalty: float,
+    express_cost: float,
+    atoms: np.ndarray = ATOMS,
+    grid: np.ndarray | None = None,
+) -> float:
+    """Smallest express reduction whose expected benefit covers its cost.
+
+    Returns ``nan`` when express never pays for itself on this distribution.
+    This is the number an A/B has to beat before a rollout makes sense.
+    """
+    grid = np.linspace(0.0, 5.0, 501) if grid is None else np.asarray(grid)
+    base = expected_excess_penalty_pmf(pmf, atoms, 0.0)
+    for reduction in grid:
+        gain = penalty * (base - expected_excess_penalty_pmf(pmf, atoms, float(reduction)))
+        if np.all(gain >= express_cost):
+            return float(reduction)
+    return float("nan")
+
+
 def policy_minimax_regret(
     pmf: np.ndarray,
     penalties,

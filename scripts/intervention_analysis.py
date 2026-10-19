@@ -42,23 +42,7 @@ def expected_excess(pmf: np.ndarray, reduction: float, atoms=policy.ATOMS) -> np
     return policy.expected_excess_penalty_pmf(pmf, atoms, reduction)
 
 
-def break_even_reduction(
-    pmf: np.ndarray,
-    penalty: float = PENALTY,
-    express_cost: float = EXPRESS_COST,
-    grid: np.ndarray | None = None,
-) -> float:
-    """Smallest express reduction whose expected benefit covers its cost.
-
-    Returns ``nan`` when express never pays for itself on this distribution.
-    """
-    grid = np.linspace(0.0, 5.0, 501) if grid is None else np.asarray(grid)
-    base = expected_excess(pmf, 0.0)
-    for reduction in grid:
-        gain = penalty * (base - expected_excess(pmf, reduction))
-        if np.all(gain >= express_cost):
-            return float(reduction)
-    return float("nan")
+break_even_reduction = policy.break_even_reduction
 
 
 def required_sample_size(
