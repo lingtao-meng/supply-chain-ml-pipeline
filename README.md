@@ -243,6 +243,30 @@ $1M 预算下它只花得出 $511k，成本停在 $3.44M，而增量贪心能花
 
 ---
 
+## 结果 8：漂移监控——构成漂移，不是行为漂移
+
+![drift](images/drift.png)
+
+以训练窗口（前 70%，截至 2017-01-08）为基准，按月计算 PSI（<0.1 稳定，>0.25 显著）：
+
+| 特征 | 参考期后最大 PSI | 判定 |
+|---|---|---|
+| `Category Name` | 23.17 | 高 |
+| `Market` | 11.04 | 高 |
+| `order_value` | 4.66 | 高 |
+| `Shipping Mode` | 0.005 | 稳定 |
+| `Customer Segment` / `Type` | 0.005 / 0.006 | 稳定 |
+| **`delay_days`（目标）** | **0.002** | **稳定** |
+
+迟到率每个月都在 **53%–56%**，平均延迟 0.50–0.61 天，几乎是一条平线。
+所以 notebook 里对抗验证的 AUC=1.0 不是「特征与延迟的关系变了」，而是「样本构成变了」：
+Market 在 2016 年切到 USCA / Pacific Asia，2017 年又切回 Europe / LATAM；Category 在 2017 年后也换了分布。
+
+这类漂移应该靠时间切分、重加权或按市场分层处理，而不是重新训练一个「更懂延迟」的模型——
+因为目标本身没有漂移。复现：`make drift`，输出 `results/drift_report.csv`、`results/drift_summary.json`。
+
+---
+
 ## 复现
 
 ```bash
@@ -251,8 +275,9 @@ pip install -r requirements.txt
 
 make data        # 或手动放 data/DataCoSupplyChainDataset.csv
 make reproduce   # 全部数字：results/ + images/ + models/model_bundle.joblib
-make test        # 46 个单测，不需要数据集
+make test        # 55 个单测，不需要数据集
 make smoke       # 合成数据端到端（CI 同款）
+make drift       # 月度 PSI 漂移报告
 make app         # Streamlit 演示
 
 # 批量评分：CSV → 预测 + 建议动作 + 期望成本
@@ -273,11 +298,12 @@ src/pipeline.py                    数据加载、18 维特征、时间切分、
 src/policy.py                      统一成本函数、11 个策略、pmf/预算决策、bootstrap
 scripts/refresh_cost_analysis.py   一键复现：训练 → 天花板诊断 → 成本表 → 模型包
 scripts/score_orders.py            批量评分：CSV → 预测 + 建议动作 + 期望成本
+scripts/drift_report.py            月度 PSI 漂移报告（构成 vs 行为）
 app/app.py                         Streamlit：输入订单 → 分布 → 期望成本 → 动作
-tests/                             46 个单测 + 合成数据夹具（CI 用）
+tests/                             55 个单测 + 合成数据夹具（CI 用）
 notebooks/                         探索过程（成本口径已统一到 src/policy.py）
-results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv…
-images/                            7 张由脚本生成的图 + notebook 探索图
+results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv、drift_report.csv…
+images/                            8 张由脚本生成的图 + notebook 探索图
 ```
 
 ---
@@ -300,9 +326,9 @@ v2 是对 v1 的**修正与补强**，不是重写。旧的预测数字全部原
 | 8 | 缓存只看「文件在不在」，改特征会静默复用旧模型 | 缓存键包含数据指纹、超参和版本 |
 | 9 | app 需要的 `best_model.pkl` 从不存在，clone 下来必然报错 | 模型包由复现脚本生成，路径与 app 对齐 |
 
-v2.1 又补了三块：**预算约束的增量贪心**（修掉了「每单只选一个动作」丢掉升级收益的问题）、
-**批量评分 CLI**（`scripts/score_orders.py`），以及**决策地图**（干预率随成本参数的阶跃变化）。
-测试从 33 增加到 46。
+v2.1 又补了四块：**预算约束的增量贪心**（修掉了「每单只选一个动作」丢掉升级收益的问题）、
+**批量评分 CLI**（`scripts/score_orders.py`）、**决策地图**（干预率随成本参数的阶跃变化），
+以及**月度 PSI 漂移报告**（区分构成漂移与行为漂移）。测试从 33 增加到 55。
 
 ---
 
@@ -320,7 +346,7 @@ v2.1 又补了三块：**预算约束的增量贪心**（修掉了「每单只�
 
 6. **没有服务化**：目前是脚本 + Streamlit；下一步 FastAPI + Docker，加批量 CSV 上传与决策导出。
 7. **没有实验追踪与数据版本**：可接 MLflow + DVC，把每次成本表和数据指纹绑定。
-8. **漂移监控只在离线做过**：对抗验证 + 卡方，下一步加月度 PSI 监控与自动重训练策略。
+8. **漂移监控目前是离线月度 PSI**（见结果 8）；下一步是在线监控、告警阈值与自动重训练触发。
 
 ---
 
