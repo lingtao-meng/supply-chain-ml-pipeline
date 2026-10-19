@@ -24,6 +24,8 @@ Outputs
     results/bootstrap.csv
     results/sensitivity.csv
     results/capacity_curve.csv
+    results/budget_curve.csv
+    results/cost_model_check.csv
     results/mode_table.csv
     results/diagnostics.json
     results/summary.md
@@ -33,6 +35,8 @@ Outputs
     images/signal_ceiling.png
     images/distribution_example.png
     images/capacity.png
+    images/budget.png
+    images/decision_map.png
 """
 
 from __future__ import annotations
@@ -373,12 +377,44 @@ def main() -> int:
     mode_pmf_table, mode_pmf_default = policy.pmf_table(mode_train, split.y_train)
     pmf_lookup = policy.pmf_matrix(mode_test, mode_pmf_table, mode_pmf_default)
 
+    # Cost-model assumption check: the flat $200/day is a choice, not a fact.
+    # A value-proportional late fee is the other obvious model; see whether the
+    # intervention story survives it.
+    order_value = df.loc[split.test_index, "Order Item Total"].to_numpy(dtype=float)
+    penalty_value = np.maximum(0.01 * order_value, 20.0)
+    idx_value = policy.policy_expected_cost_pmf(pmf_lookup, penalty_value)
+    value_mix = policy.action_mix(idx_value)
+    flat_mix = policy.action_mix(policy.policy_expected_cost_pmf(pmf_lookup, pen))
+    cost_model = pd.DataFrame(
+        [
+            {
+                "cost_model": f"flat ${pen:.0f}/day",
+                "median_penalty_per_day": float(pen),
+                "intervention_rate": 1 - flat_mix["none"],
+                "notify_rate": flat_mix["notify"],
+                "express_rate": flat_mix["express"],
+            },
+            {
+                "cost_model": "1% of order value/day (floor $20)",
+                "median_penalty_per_day": float(np.median(penalty_value)),
+                "intervention_rate": 1 - value_mix["none"],
+                "notify_rate": value_mix["notify"],
+                "express_rate": value_mix["express"],
+            },
+        ]
+    )
+    cost_model.to_csv(results_dir / "cost_model_check.csv", index=False)
+
     atoms = {int(v): float((delay <= v).mean()) for v in (-1, 0, 1, 2, 3)}
     print("achievable coverage ladder (test set):",
           " ".join(f"P(y<={k})={v:.1%}" for k, v in atoms.items()))
     print(f"achieved: P10={(delay <= p10).mean():.1%} "
           f"P50={(delay <= p50).mean():.1%} P90={(delay <= p90).mean():.1%}")
     print(f"MAE(P50) = {np.abs(delay - p50).mean():.3f} days")
+    print("cost-model check:")
+    for _, row in cost_model.iterrows():
+        print(f"  {row['cost_model']:<38s} median fee ${row['median_penalty_per_day']:>6,.0f}/day "
+              f"-> intervention {row['intervention_rate']:.1%}")
 
     # ------------------------------------------------------------------ diagnostics
     print("== diagnostics: how much signal is there? ==")
@@ -421,6 +457,7 @@ def main() -> int:
         "quantile grid (3 points)": policy.policy_expected_cost(draws, pen),
         "pmf exact (lookup)": policy.policy_expected_cost_pmf(pmf_lookup, pen),
         "pmf 7-class model": policy.policy_expected_cost_pmf(pmf_model, pen),
+        "budget $500k (pmf)": policy.policy_budget_pmf(pmf_lookup, pen, 500_000),
         "capacity 25% (best-first)": policy.policy_capacity_pmf(pmf_lookup, pen, 0.25),
         "oracle (hindsight)": policy.policy_oracle(delay, pen),
     }
@@ -468,6 +505,9 @@ def main() -> int:
                 draws=draws, p_late=p_late, pos_pmf=pos_pmf, neg_pmf=neg_pmf, pmf=pmf_lookup,
             )
             best = min(costs, key=costs.get)
+            idx_pmf = policy.policy_expected_cost_pmf(pmf_lookup, p, actions=actions)
+            idx_q = policy.policy_expected_cost(draws, p, actions=actions)
+            mix = policy.action_mix(idx_pmf, actions)
             sens_rows.append(
                 {
                     "penalty_per_day": p,
@@ -480,6 +520,10 @@ def main() -> int:
                     "advantage_pmf_vs_quantile_pct": 1 - costs["pmf_exact"] / costs["quantile_grid"],
                     "advantage_pmf_vs_binary_pct": 1 - costs["pmf_exact"] / costs["binary_cost_aware"],
                     "best_policy": best,
+                    "intervention_rate_pmf": 1 - mix["none"],
+                    "notify_rate_pmf": mix["notify"],
+                    "express_rate_pmf": mix["express"],
+                    "intervention_rate_quantile": float((idx_q != policy.IDX_NONE).mean()),
                 }
             )
     sens = pd.DataFrame(sens_rows)
@@ -502,6 +546,11 @@ def main() -> int:
         )
     cap = pd.DataFrame(cap_rows)
     cap.to_csv(results_dir / "capacity_curve.csv", index=False)
+
+    # ------------------------------------------------------------------ budget
+    budgets = [0, 100_000, 250_000, 500_000, 750_000, 1_000_000, 1_500_000, 2_707_800]
+    bc = policy.budget_curve(pmf_lookup, delay, pen, budgets)
+    bc.to_csv(results_dir / "budget_curve.csv", index=False)
 
     # ------------------------------------------------------------------ figures
     try:
@@ -619,6 +668,45 @@ def main() -> int:
         axes[1].legend(fontsize=8)
         fig.tight_layout()
         fig.savefig(images_dir / "capacity.png", dpi=150)
+        plt.close(fig)
+
+        # 6. budget curve: what the first dollars buy
+        fig, axes = plt.subplots(1, 2, figsize=(10.5, 3.6))
+        axes[0].plot(bc["budget"] / 1e3, bc["total_cost"] / 1e3, marker="o", color="#1f6f78")
+        axes[0].set_xlabel("intervention budget ($k)")
+        axes[0].set_ylabel("total cost ($k)")
+        axes[0].set_title("Cost under a budget constraint")
+        axes[1].bar(bc["budget"] / 1e3, bc["orders_notify"], width=90,
+                    color="#2f5d8c", label="notify")
+        axes[1].bar(bc["budget"] / 1e3, bc["orders_express"], width=90,
+                    bottom=bc["orders_notify"], color="#d99a2b", label="express")
+        axes[1].set_xlabel("intervention budget ($k)")
+        axes[1].set_ylabel("orders touched")
+        axes[1].set_title("What the budget buys")
+        axes[1].legend(fontsize=8)
+        fig.tight_layout()
+        fig.savefig(images_dir / "budget.png", dpi=150)
+        plt.close(fig)
+
+        # 7. decision map: the action mix is a function of the economics
+        pivot = sens.pivot_table(
+            index="penalty_per_day", columns="express_cost", values="express_rate_pmf"
+        )
+        fig, ax = plt.subplots(figsize=(7.2, 3.8))
+        im = ax.imshow(pivot.to_numpy(), cmap="YlOrBr", aspect="auto", vmin=0, vmax=1)
+        ax.set_xticks(range(len(pivot.columns)), [f"${c}" for c in pivot.columns])
+        ax.set_yticks(range(len(pivot.index)), [f"${p}" for p in pivot.index])
+        ax.set_xlabel("express cost")
+        ax.set_ylabel("penalty per late day")
+        ax.set_title("Share of orders sent to express (pmf policy)")
+        for i in range(pivot.shape[0]):
+            for j in range(pivot.shape[1]):
+                value = pivot.to_numpy()[i, j]
+                ax.text(j, i, f"{value:.0%}", ha="center", va="center", fontsize=8,
+                        color="white" if value > 0.55 else "#3b3b3b")
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        fig.tight_layout()
+        fig.savefig(images_dir / "decision_map.png", dpi=150)
         plt.close(fig)
     except Exception as exc:  # pragma: no cover - charts are optional
         print(f"charts skipped: {exc}")
@@ -768,9 +856,50 @@ def main() -> int:
         "Against the fair binary baseline the gap is −0.005% to +2.6%, and binary wins 4 of 20 —",
         "i.e. model class barely matters; the distribution representation and the decision rule do.",
         "",
+        "## The decision is a function of the economics",
+        "",
+        "Share of orders sent to express by the pmf policy:",
+        "",
+        df_to_markdown(
+            sens.pivot_table(
+                index="penalty_per_day", columns="express_cost", values="express_rate_pmf"
+            ).reset_index(),
+            ".1%",
+        ),
+        "",
+        "At $200/day and $100 express the optimal policy expedites 35% of orders and notifies 59%;",
+        "raise the penalty or cut the express price and express takes over the whole book.",
+        "The model does not decide this — the cost structure does.",
+        "",
+        "## Cost-model assumption check",
+        "",
+        "The flat $200/day penalty is an assumption. A value-proportional late fee is the other",
+        "obvious model; here is what happens to the decision under it:",
+        "",
+        df_to_markdown(
+            cost_model.assign(
+                median_penalty_per_day=cost_model["median_penalty_per_day"].map(
+                    lambda v: f"${v:,.0f}/day"
+                )
+            ),
+            ".2%",
+        ),
+        "",
+        "With 1%/day of order value (floor $20) the median fee is only $20/day, so no action pays",
+        "for itself — intervention drops from 94% to 0%. The 94% is a consequence of the flat",
+        "$200/day assumption, not of the data. Any real deployment has to calibrate this first.",
+        "",
         "## Capacity-constrained allocation",
         "",
         df_to_markdown(cap, ".3f"),
+        "",
+        "## Budget-constrained allocation (pmf, incremental greedy)",
+        "",
+        df_to_markdown(bc, ".3f"),
+        "",
+        "The first $500k buys notifications for almost every order; the next $500k upgrades them",
+        "to express; $1.5M already reaches the unconstrained optimum ($1.27M of action spend).",
+        "That is the order a planner should spend in — not the order the model scores highest.",
         "",
     ]
     (results_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8")

@@ -7,6 +7,7 @@ __pycache__/
 .ipynb_checkpoints/
 models/*.joblib
 results/*.log
+results/decisions.csv
 
 # local environments / tool caches
 .venv/
