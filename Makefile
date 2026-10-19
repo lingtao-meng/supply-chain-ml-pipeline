@@ -34,6 +34,18 @@ score:  ## batch-score a CSV (INPUT=orders.csv OUT=plan.csv BUDGET=500000)
 drift:  ## monthly PSI drift report (requires data)
 	$(PY) scripts/drift_report.py
 
+pacing:  ## multi-period budget pacing simulation
+	$(PY) scripts/pacing_simulation.py
+
+intervention:  ## break-even effect and A/B sample size
+	$(PY) scripts/intervention_analysis.py
+
+monitor:  ## PSI monitoring (REF=old.csv CUR=new.csv)
+	$(PY) scripts/monitor.py --reference $(REF) --current $(CUR)
+
+api:  ## run the HTTP service (requires `make reproduce` first)
+	$(PY) -m uvicorn api.main:app --reload --port 8000
+
 smoke:  ## end-to-end on synthetic data, exactly what CI runs
 	$(PY) tests/fixtures/make_synthetic_dataco.py /tmp/dataco_small.csv
 	$(PY) scripts/refresh_cost_analysis.py --data /tmp/dataco_small.csv --fast --no-cache \

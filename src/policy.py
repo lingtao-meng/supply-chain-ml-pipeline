@@ -223,6 +223,45 @@ def policy_capacity(
     return out
 
 
+def scenario_cost_matrix(
+    pmf: np.ndarray,
+    penalties,
+    express_costs,
+    atoms: np.ndarray = ATOMS,
+) -> np.ndarray:
+    """(n_scenarios, n_orders, n_actions) expected cost under each cost scenario.
+
+    The only thing that varies between scenarios is the daily penalty and the
+    price of express; the action menu is always none / notify / express.
+    """
+    matrices = []
+    for penalty in penalties:
+        for express_cost in express_costs:
+            actions = (NONE, NOTIFY, Action("express", cost=float(express_cost), reduction=2.0))
+            matrices.append(expected_cost_from_pmf(pmf, penalty, atoms, actions))
+    return np.stack(matrices)
+
+
+def policy_minimax_regret(
+    pmf: np.ndarray,
+    penalties,
+    express_costs,
+    atoms: np.ndarray = ATOMS,
+) -> np.ndarray:
+    """Pick the action whose worst-case regret over the scenarios is smallest.
+
+    Expected-cost minimisation assumes the planner knows the penalty and the
+    express price.  In practice both are negotiated and uncertain, so the
+    robust rule asks: *if I am wrong about the economics, how badly can this
+    order go?*  Regret is measured against the best action for each scenario.
+    """
+    costs = scenario_cost_matrix(pmf, penalties, express_costs, atoms)
+    best = costs.min(axis=2, keepdims=True)
+    regret = costs - best
+    worst = regret.max(axis=0)
+    return worst.argmin(axis=1)
+
+
 def policy_oracle(
     delay: np.ndarray, penalty: float, actions: tuple[Action, ...] = ACTIONS
 ) -> np.ndarray:
