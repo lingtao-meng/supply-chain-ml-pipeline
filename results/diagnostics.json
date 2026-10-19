@@ -77,6 +77,7 @@
     "quantile grid (3 points)": 3258160.0,
     "all express": 3346800.0,
     "binary: p50 > 0 (legacy)": 3358100.0,
+    "budget $500k (pmf)": 3457000.0,
     "capacity 25% (best-first)": 3776800.0,
     "none (do nothing)": 4882200.0
   },

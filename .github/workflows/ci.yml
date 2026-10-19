@@ -63,6 +63,22 @@ jobs:
           test -f /tmp/results/diagnostics.json
           test -f /tmp/images/policy_costs.png
           test -f models/model_bundle.joblib
+      - name: Batch scoring CLI
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          df = pd.read_csv("/tmp/dataco_small.csv", nrows=80)
+          df.to_csv("/tmp/orders_sample.csv", index=False)
+          PY
+          python scripts/score_orders.py --input /tmp/orders_sample.csv --out /tmp/decisions.csv --budget 2000
+          python - <<'PY'
+          import pandas as pd
+          plan = pd.read_csv("/tmp/decisions.csv")
+          assert len(plan) == 80
+          assert plan["recommended_action"].isin(["none", "notify", "express"]).all()
+          assert plan["expected_saving"].notna().all()
+          print(plan["recommended_action"].value_counts().to_dict())
+          PY
       - name: Streamlit app smoke test
         run: |
           python - <<'PY'

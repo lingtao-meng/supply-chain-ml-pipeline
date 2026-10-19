@@ -25,6 +25,12 @@ lint:  ## ruff + byte-compile
 app:  ## run the Streamlit demo (requires `make reproduce` first)
 	$(PY) -m streamlit run app/app.py
 
+INPUT ?= /tmp/orders_sample.csv
+OUT ?= results/decisions.csv
+
+score:  ## batch-score a CSV (INPUT=orders.csv OUT=plan.csv BUDGET=500000)
+	$(PY) scripts/score_orders.py --input $(INPUT) --out $(OUT) $(if $(BUDGET),--budget $(BUDGET),)
+
 smoke:  ## end-to-end on synthetic data, exactly what CI runs
 	$(PY) tests/fixtures/make_synthetic_dataco.py /tmp/dataco_small.csv
 	$(PY) scripts/refresh_cost_analysis.py --data /tmp/dataco_small.csv --fast --no-cache \
