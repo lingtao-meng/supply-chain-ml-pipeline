@@ -1,0 +1,5 @@
+# HTTP service extra (the CLI / tests / app do not need these)
+-r requirements.txt
+fastapi>=0.110
+uvicorn[standard]>=0.29
+httpx>=0.27

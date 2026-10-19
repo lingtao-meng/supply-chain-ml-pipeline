@@ -84,6 +84,39 @@ jobs:
           python scripts/drift_report.py --data /tmp/dataco_small.csv --outdir /tmp/drift --images /tmp/drift_images
           test -f /tmp/drift/drift_report.csv
           test -f /tmp/drift/drift_summary.json
+      - name: API tests
+        run: |
+          pip install -q -r requirements-service.txt
+          python -m unittest tests.test_api -v
+      - name: Monitoring, pacing, intervention
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          df = pd.read_csv("/tmp/dataco_small.csv")
+          cut = int(len(df) * 0.7)
+          df.iloc[:cut].to_csv("/tmp/ref.csv", index=False)
+          df.iloc[cut:].to_csv("/tmp/cur.csv", index=False)
+          PY
+          set +e
+          python scripts/monitor.py --reference /tmp/ref.csv --current /tmp/cur.csv --out /tmp/monitor.json
+          code=$?
+          set -e
+          test $code -le 1
+          test -f /tmp/monitor.json
+          python scripts/pacing_simulation.py --data /tmp/dataco_small.csv --outdir /tmp/results --images /tmp/images
+          python scripts/intervention_analysis.py --data /tmp/dataco_small.csv --outdir /tmp/results --images /tmp/images
+          test -f /tmp/results/pacing.csv
+          test -f /tmp/results/intervention_summary.json
+      - name: Docker build and health check
+        run: |
+          docker build -t delay-api .
+          docker run -d --name delay-api -p 8000:8000 delay-api
+          for i in $(seq 1 30); do
+            if curl -sf localhost:8000/health | grep -q '"model_loaded":true'; then break; fi
+            sleep 1
+          done
+          curl -sf localhost:8000/health | grep -q '"model_loaded":true'
+          docker stop delay-api
       - name: Streamlit app smoke test
         run: |
           python - <<'PY'
