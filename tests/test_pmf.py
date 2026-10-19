@@ -105,6 +105,41 @@ class TestPmfPolicies(unittest.TestCase):
         self.assertGreaterEqual(cost, 0.0)
 
 
+class TestPerOrderPenalty(unittest.TestCase):
+    """A late fee can scale with order value; the cost layer must support that."""
+
+    @staticmethod
+    def uniform_standard_pmf() -> np.ndarray:
+        pmf = np.zeros(len(policy.ATOMS))
+        pmf[(policy.ATOMS >= -2) & (policy.ATOMS <= 2)] = 0.2
+        return pmf
+
+    def test_realised_cost_with_vector_penalty(self):
+        delay = np.array([2.0, 3.0])
+        penalty = np.array([100.0, 500.0])
+        cost = policy.realised_cost(np.array([policy.IDX_NOTIFY] * 2), delay, penalty)
+        np.testing.assert_allclose(cost, [20 + 0.6 * 100 * 2, 20 + 0.6 * 500 * 3])
+
+    def test_realised_cost_rejects_mismatched_length(self):
+        with self.assertRaises(ValueError):
+            policy.realised_cost(
+                np.array([policy.IDX_NONE]), np.array([1.0, 2.0]), np.array([10.0])
+            )
+
+    def test_expected_cost_accepts_vector_penalty(self):
+        pmf = np.vstack([self.uniform_standard_pmf()] * 2)
+        exp = policy.expected_cost_from_pmf(pmf, np.array([10.0, 400.0]))
+        self.assertEqual(exp.shape, (2, len(policy.ACTIONS)))
+        self.assertLess(exp[0, policy.IDX_NONE], exp[0, policy.IDX_EXPRESS])
+        self.assertGreater(exp[1, policy.IDX_NONE], exp[1, policy.IDX_EXPRESS])
+
+    def test_higher_penalty_gets_a_stronger_action(self):
+        pmf = np.vstack([self.uniform_standard_pmf()] * 2)
+        idx = policy.policy_expected_cost_pmf(pmf, np.array([10.0, 400.0]))
+        self.assertEqual(idx[0], policy.IDX_NONE)
+        self.assertEqual(idx[1], policy.IDX_EXPRESS)
+
+
 class TestBootstrap(unittest.TestCase):
     def test_identical_policies_are_not_significant(self):
         rng = np.random.default_rng(2)

@@ -101,18 +101,28 @@ def expected_cost_per_action(
 def realised_cost(
     action_idx: np.ndarray,
     delay: np.ndarray,
-    penalty: float,
+    penalty,
     actions: tuple[Action, ...] = ACTIONS,
 ) -> np.ndarray:
-    """Per-order cost once the actual delay is known."""
+    """Per-order cost once the actual delay is known.
+
+    ``penalty`` may be a scalar or one penalty per order (e.g. a late fee that
+    scales with order value).  Subsets are masked before the multiplication, so
+    an array penalty keeps its alignment.
+    """
+    delay = np.asarray(delay, dtype=float)
+    action_idx = np.asarray(action_idx)
+    pen = np.asarray(penalty, dtype=float)
+    if pen.ndim and pen.shape[0] != len(delay):
+        raise ValueError(f"penalty has {pen.shape[0]} rows but delay has {len(delay)}")
+
     costs = np.empty(len(delay))
     for i, a in enumerate(actions):
         m = action_idx == i
         if not m.any():
             continue
-        costs[m] = a.cost + penalty * a.multiplier * np.clip(
-            delay[m] - a.reduction, 0.0, None
-        )
+        p = pen[m] if pen.ndim else pen
+        costs[m] = a.cost + p * a.multiplier * np.clip(delay[m] - a.reduction, 0.0, None)
     return costs
 
 
@@ -247,6 +257,95 @@ def policy_capacity_pmf(
     keep = order[gain[order] > 0]
     out[keep] = best_action[keep]
     return out
+
+
+def policy_budget_pmf(
+    pmf: np.ndarray,
+    penalty: float,
+    budget: float,
+    atoms: np.ndarray = ATOMS,
+    actions: tuple[Action, ...] = ACTIONS,
+) -> np.ndarray:
+    """Budget allocation from an exact pmf, as an incremental greedy.
+
+    The naive version ranks (order, action) pairs once and gives each order a
+    single action — which throws away upgrades (notify is cheap and captures
+    most of the benefit; express is an $80 upgrade on top of it).  Instead,
+    start at ``none`` and repeatedly apply the move with the best marginal
+    benefit per marginal dollar, among the moves that are currently available:
+
+    * ``none -> notify``       ($20)
+    * ``none -> express``      ($100, no notify first)
+    * ``notify -> express``    ($80, the upgrade)
+
+    ``budget`` limits action spend, not the penalty bill — exactly how a
+    planner's cost centre works.
+    """
+    import heapq
+
+    exp_cost = expected_cost_from_pmf(pmf, penalty, atoms, actions)
+    n = len(pmf)
+    current = np.full(n, IDX_NONE, dtype=int)
+    remaining = float(budget)
+
+    def push(heap: list, order: int, frm: int, to: int) -> None:
+        gain = float(exp_cost[order, frm] - exp_cost[order, to])
+        cost = float(actions[to].cost - actions[frm].cost)
+        if gain > 0 and cost > 0:
+            heapq.heappush(heap, (-gain / cost, order, frm, to))
+
+    heap: list = []
+    for order in range(n):
+        push(heap, order, IDX_NONE, IDX_NOTIFY)
+        push(heap, order, IDX_NONE, IDX_EXPRESS)
+
+    while heap:
+        _, order, frm, to = heapq.heappop(heap)
+        if current[order] != frm:
+            continue  # stale move: the order already moved on
+        cost = float(actions[to].cost - actions[frm].cost)
+        if cost > remaining + 1e-9:
+            continue  # budget only shrinks, so this move never becomes affordable
+        current[order] = to
+        remaining -= cost
+        if to == IDX_NOTIFY:
+            push(heap, order, IDX_NOTIFY, IDX_EXPRESS)
+    return current
+
+
+def budget_curve(
+    pmf: np.ndarray,
+    delay: np.ndarray,
+    penalty: float,
+    budgets,
+    atoms: np.ndarray = ATOMS,
+    actions: tuple[Action, ...] = ACTIONS,
+) -> pd.DataFrame:
+    """Cost and reach as a function of the intervention budget."""
+    rows = []
+    late = np.asarray(delay) > 0
+    exp_cost = expected_cost_from_pmf(pmf, penalty, atoms, actions)
+    for budget in budgets:
+        idx = policy_budget_pmf(pmf, penalty, budget, atoms, actions)
+        cost = realised_cost(idx, delay, penalty, actions)
+        touched = idx != IDX_NONE
+        expected_total = float(exp_cost[np.arange(len(pmf)), idx].sum())
+        spend = float(sum(actions[i].cost for i in idx if i != IDX_NONE))
+        rows.append(
+            {
+                "budget": float(budget),
+                "total_cost": float(cost.sum()),
+                "expected_total_cost": expected_total,
+                "action_spend": spend,
+                "orders_touched": int(touched.sum()),
+                "orders_notify": int((idx == IDX_NOTIFY).sum()),
+                "orders_express": int((idx == IDX_EXPRESS).sum()),
+                "intervention_rate": float(touched.mean()),
+                "recall_late": float((touched & late).sum() / max(int(late.sum()), 1)),
+                "precision": float((touched & late).sum() / max(int(touched.sum()), 1)),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 # ---------------------------------------------------------------- scoring

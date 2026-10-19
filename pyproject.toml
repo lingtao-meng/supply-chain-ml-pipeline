@@ -13,6 +13,10 @@ extend-exclude = [".venv", "notebooks", "build"]
 select = ["E4", "E7", "E9", "F", "I", "B"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# tests put sys.path manipulation before the project imports on purpose
+"tests/*" = ["E402", "I001"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
