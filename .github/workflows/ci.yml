@@ -79,6 +79,11 @@ jobs:
           assert plan["expected_saving"].notna().all()
           print(plan["recommended_action"].value_counts().to_dict())
           PY
+      - name: Drift report
+        run: |
+          python scripts/drift_report.py --data /tmp/dataco_small.csv --outdir /tmp/drift --images /tmp/drift_images
+          test -f /tmp/drift/drift_report.csv
+          test -f /tmp/drift/drift_summary.json
       - name: Streamlit app smoke test
         run: |
           python - <<'PY'

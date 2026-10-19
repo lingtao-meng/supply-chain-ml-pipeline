@@ -31,6 +31,9 @@ OUT ?= results/decisions.csv
 score:  ## batch-score a CSV (INPUT=orders.csv OUT=plan.csv BUDGET=500000)
 	$(PY) scripts/score_orders.py --input $(INPUT) --out $(OUT) $(if $(BUDGET),--budget $(BUDGET),)
 
+drift:  ## monthly PSI drift report (requires data)
+	$(PY) scripts/drift_report.py
+
 smoke:  ## end-to-end on synthetic data, exactly what CI runs
 	$(PY) tests/fixtures/make_synthetic_dataco.py /tmp/dataco_small.csv
 	$(PY) scripts/refresh_cost_analysis.py --data /tmp/dataco_small.csv --fast --no-cache \

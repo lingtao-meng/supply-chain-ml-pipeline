@@ -1,0 +1,23 @@
+{
+  "reference_rows": 126363,
+  "reference_end": "2017-01-08",
+  "months": 37,
+  "max_psi_after_reference": {
+    "Category Name": 23.170666935856463,
+    "Market": 11.034732360663753,
+    "order_value": 4.65494638072348,
+    "Type": 0.006232368851614101,
+    "Shipping Mode": 0.005265236236435975,
+    "Customer Segment": 0.00471617127328219,
+    "delay_days": 0.002493045374554136
+  },
+  "verdict": {
+    "Category Name": "high",
+    "Market": "high",
+    "order_value": "high",
+    "Type": "stable",
+    "Shipping Mode": "stable",
+    "Customer Segment": "stable",
+    "delay_days": "stable"
+  }
+}
