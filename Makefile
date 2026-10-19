@@ -1,0 +1,35 @@
+PY ?= python
+
+.PHONY: help data reproduce fast test lint app smoke clean
+
+help:
+	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*##/ —/'
+
+data:  ## download the 91 MB DataCo dataset into data/
+	$(PY) -c "import kagglehub; print(kagglehub.dataset_download('evilspirit05/datasupplychain'))"
+	$(PY) -c "import pathlib, shutil; src = next(pathlib.Path.home().glob('.cache/kagglehub/datasets/evilspirit05/datasupplychain/**/DataCoSupplyChainDataset.csv')); pathlib.Path('data').mkdir(exist_ok=True); shutil.copy(src, 'data/DataCoSupplyChainDataset.csv'); print('copied', src)"
+
+reproduce:  ## full run: models -> cost table -> results/ -> model bundle
+	$(PY) scripts/refresh_cost_analysis.py
+
+fast:  ## same pipeline with tiny models (~30 s), for a quick check
+	$(PY) scripts/refresh_cost_analysis.py --fast --no-cache
+
+test:  ## unit tests (no dataset needed)
+	$(PY) -m unittest discover -s tests -v
+
+lint:  ## ruff + byte-compile
+	$(PY) -m ruff check . || ruff check .
+	$(PY) -m compileall -q src scripts app tests
+
+app:  ## run the Streamlit demo (requires `make reproduce` first)
+	$(PY) -m streamlit run app/app.py
+
+smoke:  ## end-to-end on synthetic data, exactly what CI runs
+	$(PY) tests/fixtures/make_synthetic_dataco.py /tmp/dataco_small.csv
+	$(PY) scripts/refresh_cost_analysis.py --data /tmp/dataco_small.csv --fast --no-cache \
+		--outdir /tmp/dataco_results --images /tmp/dataco_images \
+		--bundle /tmp/dataco_bundle.joblib
+
+clean:
+	rm -rf __pycache__ */__pycache__ .pytest_cache .ruff_cache
