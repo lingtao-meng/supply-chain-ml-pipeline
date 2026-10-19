@@ -1,0 +1,18 @@
+# Tooling configuration only — the project is used as a checkout, not as a
+# pip-installable package (there is no packaging section on purpose: `src` is
+# imported via `sys.path` by the script, the app and the tests).
+#
+# Install with:  pip install -r requirements.txt -r requirements-dev.txt
+
+[tool.ruff]
+target-version = "py310"
+line-length = 110
+extend-exclude = [".venv", "notebooks", "build"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,9 @@
+# Extra dependencies for notebooks/supply_chain_ml_pipeline.ipynb only.
+# The reproducible path (scripts/refresh_cost_analysis.py + tests) does not
+# need any of these.
+-r requirements.txt
+jupyter>=1.0
+optuna>=3.6
+shap>=0.44
+lightgbm>=4.3
+seaborn>=0.13
