@@ -20,6 +20,26 @@ make reproduce   # 训练 → 诊断 → 成本表 → results/ + 模型包
 
 ---
 
+## 架构一览
+
+```mermaid
+flowchart LR
+    A["DataCo<br/>180,519 orders"] --> B["src/pipeline.py<br/>18 features · time split"]
+    B --> C["models<br/>quantile · binary · 7-class pmf"]
+    C --> D["src/policy.py<br/>cost · budget · capacity · minimax regret"]
+    D --> E["src/scoring.py"]
+    E --> F["CLI<br/>score_orders.py"]
+    E --> G["FastAPI<br/>api/main.py"]
+    E --> H["Streamlit<br/>app/app.py"]
+    I["src/monitoring.py"] --> J["monitor.py<br/>PSI + retrain trigger"]
+    K["src/experiment.py"] --> L["ab_analysis.py<br/>A/B + rollout decision"]
+```
+
+`src/policy.py` 是唯一决定「动作成本怎么算」的地方，`src/scoring.py` 是唯一决定
+「怎么把订单变成预测」的地方；脚本、API、App、测试全部复用这两个模块。
+
+---
+
 ## 结论先行
 
 | # | 结论 | 证据 |
