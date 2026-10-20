@@ -110,6 +110,9 @@ jobs:
           python scripts/ab_analysis.py --outdir /tmp/results --images /tmp/images --n-per-arm 500
           test -f /tmp/results/ab_analysis.json
           test -f /tmp/images/ab_analysis.png
+          python scripts/uplift_analysis.py --data /tmp/dataco_small.csv --outdir /tmp/results --images /tmp/images
+          test -f /tmp/results/uplift.json
+          test -f /tmp/images/uplift.png
       - name: Docker build and health check
         run: |
           docker build -t delay-api .
