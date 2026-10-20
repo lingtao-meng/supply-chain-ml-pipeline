@@ -164,6 +164,7 @@ def plot(by_mode: pd.DataFrame, images: Path) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--input", default=None, help="CSV with delay_days and treated (0/1)")
+    ap.add_argument("--bundle", default=None, help="model bundle path")
     ap.add_argument("--outdir", default=str(ROOT / "results"))
     ap.add_argument("--images", default=str(ROOT / "images"))
     ap.add_argument("--penalty", type=float, default=None)
@@ -178,7 +179,7 @@ def main() -> int:
     outdir.mkdir(parents=True, exist_ok=True)
     images.mkdir(parents=True, exist_ok=True)
 
-    bundle = scoring.load_bundle()
+    bundle = scoring.load_bundle(args.bundle)
     penalty = float(bundle["params"]["penalty"] if args.penalty is None else args.penalty)
     break_even = mode_break_even(bundle, penalty, args.express_cost)
 

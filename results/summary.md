@@ -171,5 +171,6 @@ That is the order a planner should spend in — not the order the model scores h
 - `intervention_*.csv`, `ab_sample_size.csv` — `scripts/intervention_analysis.py`
 - `pacing.csv` — `scripts/pacing_simulation.py` (multi-period budget)
 - `ab_analysis.json` / `ab_by_mode.csv` — `scripts/ab_analysis.py` (A/B framework)
+- `uplift.json` / `uplift_targeting.csv` — `scripts/uplift_analysis.py` (targeting)
 - `robustness.csv` / `robustness_summary.csv` — this script (minimax regret)
 - `python scripts/monitor.py --reference ref.csv --current new.csv` — online PSI check

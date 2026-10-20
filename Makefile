@@ -9,7 +9,7 @@ data:  ## download the 91 MB DataCo dataset into data/
 	$(PY) -c "import kagglehub; print(kagglehub.dataset_download('evilspirit05/datasupplychain'))"
 	$(PY) -c "import pathlib, shutil; src = next(pathlib.Path.home().glob('.cache/kagglehub/datasets/evilspirit05/datasupplychain/**/DataCoSupplyChainDataset.csv')); pathlib.Path('data').mkdir(exist_ok=True); shutil.copy(src, 'data/DataCoSupplyChainDataset.csv'); print('copied', src)"
 
-all: reproduce drift intervention pacing ab  ## regenerate every analysis
+all: reproduce drift intervention pacing ab uplift  ## regenerate every analysis
 
 reproduce:  ## full run: models -> cost table -> results/ -> model bundle
 	$(PY) scripts/refresh_cost_analysis.py
@@ -47,6 +47,9 @@ monitor:  ## PSI monitoring (REF=old.csv CUR=new.csv)
 
 ab:  ## A/B analysis (simulated if no --input is given)
 	$(PY) scripts/ab_analysis.py
+
+uplift:  ## heterogeneous effects + targeting (Qini / cost curve)
+	$(PY) scripts/uplift_analysis.py
 
 api:  ## run the HTTP service (requires `make reproduce` first)
 	$(PY) -m uvicorn api.main:app --reload --port 8000

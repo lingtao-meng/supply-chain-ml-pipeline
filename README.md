@@ -396,6 +396,30 @@ $500k 时差距最大：月度节奏的迟到召回只有 85%，全局是 98.5%�
 
 ---
 
+## 结果 14：异质效应与定向干预——风险高 ≠ 值得干预
+
+![uplift](images/uplift.png)
+
+前面所有策略都假设「加急对所有订单都减 2 天」。现实中效果因订单而异：高价值、慢运输方式的
+订单受益更大，Same Day 订单几乎没收益。用 T-learner 估计 CATE，用 Qini/AUUC 评估排序，
+再用真实效应算定向干预的净节省：
+
+| 定向比例 | CATE（uplift） | p_late（风险） | pmf_gain（恒定效应） | 随机 | Oracle |
+|---|---|---|---|---|---|
+| 10% | **$1.06M** | $0.21M | $0.64M | $0.50M | $1.21M |
+| 20% | **$2.04M** | $0.61M | $1.22M | $0.99M | $2.18M |
+| 30% | **$2.80M** | $1.19M | $1.43M | $1.47M | $2.95M |
+
+AUUC **0.83**（模拟中加入不可观测的异质性，避免“完美排序”的假象）。
+
+最反直觉的结论：**按迟到风险排序，在三个比例下都比随机还差**。因为高风险集中在
+Second/Standard 的低价值订单——它们“容易晚”，但加急对它们的效果并不大；而高价值订单
+效果更高、风险却不一定高。风险模型回答“会不会晚”，uplift 回答“干预有没有用”，这是两个问题。
+
+> 注意：这是模拟验证，不是 DataCo 的真实 CATE。真实场景需要结果 13 的 A/B 数据来训练 uplift。
+
+---
+
 ## 三个入口：脚本 / HTTP / UI
 
 | 入口 | 命令 | 适合 |
@@ -435,7 +459,7 @@ pip install -r requirements-service.txt   # 只有跑 HTTP API / Docker 时需�
 
 make data        # 或手动放 data/DataCoSupplyChainDataset.csv
 make reproduce   # 全部数字：results/ + images/ + models/model_bundle.joblib
-make test        # 98 个单测，不需要数据集
+make test        # 104 个单测，不需要数据集
 make smoke       # 合成数据端到端（CI 同款）
 make drift       # 月度 PSI 漂移报告
 make app         # Streamlit 演示（单笔 + 批量）
@@ -444,6 +468,7 @@ make pacing      # 多期预算节奏
 make intervention # 干预回本点 + A/B 样本量
 make monitor REF=reference.csv CUR=new.csv   # PSI 监控（退出码 0/1/2）
 make ab          # A/B 分析（默认模拟；--input 接真实实验）
+make uplift      # 异质效应 + 定向干预
 
 # 批量评分：CSV → 预测 + 建议动作 + 期望成本
 python scripts/score_orders.py --input orders.csv --out plan.csv --budget 500000
@@ -464,6 +489,7 @@ src/policy.py                      统一成本函数、11 个策略、pmf/预�
 src/scoring.py                     共享评分：CLI / API / App 同一套逻辑
 src/monitoring.py                  PSI、告警级别、重训练建议
 src/experiment.py                  A/B：Welch、SRM、分层效应、模拟器
+src/uplift.py                      T-learner、Qini/AUUC、定向干预曲线
 scripts/refresh_cost_analysis.py   一键复现：训练 → 天花板诊断 → 成本表 → 模型包
 scripts/score_orders.py            批量评分：CSV → 预测 + 建议动作 + 期望成本
 scripts/drift_report.py            月度 PSI 漂移报告（构成 vs 行为）
@@ -471,13 +497,14 @@ scripts/monitor.py                 在线 PSI 检查（cron 友好，带退出�
 scripts/intervention_analysis.py   回本点、效果误设成本、A/B 样本量
 scripts/pacing_simulation.py       多期预算节奏模拟
 scripts/ab_analysis.py             A/B 分析（真实输入或模拟验证）
+scripts/uplift_analysis.py         异质效应与定向干预
 api/main.py                        FastAPI /score 服务
 Dockerfile                         容器镜像
 app/app.py                         Streamlit：输入订单 → 分布 → 期望成本 → 动作
-tests/                             98 个单测 + 合成数据夹具（CI 用）
+tests/                             104 个单测 + 合成数据夹具（CI 用）
 notebooks/                         探索过程（成本口径已统一到 src/policy.py）
 results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv、drift_report.csv…
-images/                            12 张由脚本生成的图 + notebook 探索图
+images/                            13 张由脚本生成的图 + notebook 探索图
 ```
 
 ---
@@ -509,6 +536,8 @@ v2.2 再把决策层做厚：**共享评分模块**（CLI / FastAPI / Streamlit 
 **可接 cron 的 PSI 监控**，以及 Docker 镜像。测试 55 → 84。
 
 v2.3 再补上 **A/B 分析框架**（Welch + SRM + 分层 + 模拟器 + 上线决策），测试 84 → 98。
+
+v2.4 补上 **uplift / 定向干预**（T-learner + Qini/AUUC + 成本曲线），测试 98 → 104。
 
 ---
 
