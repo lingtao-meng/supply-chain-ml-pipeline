@@ -467,7 +467,7 @@ pip install -r requirements-service.txt   # 只有跑 HTTP API / Docker 时需�
 
 make data        # 或手动放 data/DataCoSupplyChainDataset.csv
 make reproduce   # 全部数字：results/ + images/ + models/model_bundle.joblib
-make test        # 106 个单测，不需要数据集
+make test        # 107 个单测，不需要数据集
 make smoke       # 合成数据端到端（CI 同款）
 make drift       # 月度 PSI 漂移报告
 make app         # Streamlit 演示（单笔 + 批量）
@@ -509,7 +509,7 @@ scripts/uplift_analysis.py         异质效应与定向干预
 api/main.py                        FastAPI /score 服务
 Dockerfile                         容器镜像
 app/app.py                         Streamlit：输入订单 → 分布 → 期望成本 → 动作
-tests/                             106 个单测 + 合成数据夹具（CI 用）
+tests/                             107 个单测 + 合成数据夹具（CI 用）
 notebooks/                         探索过程（成本口径已统一到 src/policy.py）
 results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv、drift_report.csv…
 images/                            13 张由脚本生成的图 + notebook 探索图
