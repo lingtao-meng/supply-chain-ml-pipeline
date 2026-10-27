@@ -87,7 +87,12 @@ def summarise(
         experiment.rollout_decision(low, high, be)
         for low, high, be in zip(by_mode["ci_low"], by_mode["ci_high"], by_mode["break_even"])  # noqa: B905
     ]
+    control_delay = frame.loc[frame["treated"] == 0, "delay_days"].to_numpy(dtype=float)
     by_mode["net_value_per_order"] = [
+        experiment.net_value(reduction, penalty, express_cost, control_delay)
+        for reduction in by_mode["reduction"]
+    ]
+    by_mode["net_value_upper_bound"] = [
         experiment.net_value(reduction, penalty, express_cost)
         for reduction in by_mode["reduction"]
     ]

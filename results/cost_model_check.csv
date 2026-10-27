@@ -1,3 +1,3 @@
 cost_model,median_penalty_per_day,intervention_rate,notify_rate,express_rate
-flat $200/day,200.0,0.9438658689711205,0.5926213161976512,0.3512445527734692
+flat $200/day,200.0,0.9453513129879347,0.5969786069147318,0.34837270607320286
 1% of order value/day (floor $20),20.0,0.0,0.0,0.0

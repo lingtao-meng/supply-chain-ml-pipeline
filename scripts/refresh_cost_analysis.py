@@ -332,6 +332,12 @@ def main() -> int:
     ap.add_argument("--penalty", type=float, default=200.0, help="$ per late day")
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--fast", action="store_true", help="small models for CI smoke tests")
+    ap.add_argument(
+        "--unit",
+        choices=("order", "line"),
+        default="order",
+        help="costing unit: order (de-duplicated, default) or line (raw rows)",
+    )
     ap.add_argument("--outdir", default=str(ROOT / "results"))
     ap.add_argument("--images", default=str(ROOT / "images"))
     ap.add_argument("--bundle", default=str(BUNDLE), help="where to write the app model bundle")
@@ -350,10 +356,20 @@ def main() -> int:
     data_path = pipeline.find_data(args.data)
     print(f"== data ==\n{data_path}")
     df = pipeline.load_orders(str(data_path))
+    if args.unit == "order":
+        n_lines = len(df)
+        df = pipeline.to_order_level(df)
+        print(f"== unit == order-level: {n_lines:,} lines -> {len(df):,} orders "
+              f"({n_lines / max(len(df), 1):.2f} lines/order)")
+    else:
+        print(f"== unit == line-level (raw): {len(df):,} rows")
     facts = pipeline.describe(df)
     print(json.dumps(facts, indent=2, ensure_ascii=False))
 
-    encoders = pipeline.fit_encoders(df)
+    # 编码器只在训练窗口上拟合：time_split 用 70% 位置切分，这里必须对齐同一刀口，
+    # 否则测试期的类别会进入 LabelEncoder.classes_，属于信息泄漏。
+    n_train_rows = int(len(df) * 0.70)
+    encoders = pipeline.fit_encoders(df.iloc[:n_train_rows])
     X, y = pipeline.build_features(df, encoders)
     split = pipeline.time_split(X, y)
     print(f"train={len(split.y_train):,} valid={len(split.y_valid):,} test={len(split.y_test):,}")

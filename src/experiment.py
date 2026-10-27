@@ -189,6 +189,23 @@ def rollout_decision(ci_low: float, ci_high: float, break_even: float) -> str:
     return "inconclusive"
 
 
-def net_value(reduction: float, penalty: float, express_cost: float) -> float:
-    """Expected saving per treated order at the point estimate."""
-    return float(penalty * reduction - express_cost)
+def net_value(
+    reduction: float,
+    penalty: float,
+    express_cost: float,
+    control_delay=None,
+) -> float:
+    """Expected saving per treated order, with the penalty floored at zero.
+
+    ``penalty * reduction`` is only an *upper bound*: an order that arrives
+    early (delay <= 0) already pays nothing, so shortening it further cannot
+    save a cent.  Pass the control-arm realised delays to get the honest
+    number; without them the function returns that upper bound and says so in
+    the docstring, because silently overstating savings is worse than a bound.
+    """
+    if control_delay is None:
+        return float(penalty * reduction - express_cost)
+    d = np.asarray(control_delay, dtype=float)
+    before = np.maximum(d, 0.0)
+    after = np.maximum(d - reduction, 0.0)
+    return float(penalty * float((before - after).mean()) - express_cost)

@@ -84,6 +84,45 @@ def load_orders(path: str) -> pd.DataFrame:
     return df
 
 
+def to_order_level(df: pd.DataFrame) -> pd.DataFrame:
+    """Collapse order *lines* to one row per ``Order Id``.
+
+    DataCo ships one row per line item — 180,519 rows over 65,752 orders, an
+    average of 2.75 lines per order.  Charging an express fee (or a late
+    penalty) per row bills the same order 2.75 times, so every cost figure has
+    to be computed at order level.
+
+    Order-invariant fields are kept as-is: ``delay_days``, shipping mode, the
+    dates, market and customer segment are verified constant within an order.
+    Line-dependent fields are aggregated — quantity and value are summed, unit
+    price is value/quantity, discount rate is averaged.  Category and
+    department are *not* invariant (44,563 of 65,752 orders mix categories),
+    so they collapse to the dominant line; ``n_categories`` keeps the mix
+    visible for anyone who wants to check it.
+    """
+    ordered = df.sort_values(["Order Id", DATE_COL, "Order Item Id"])
+    base = ordered.drop_duplicates("Order Id", keep="first").copy()
+
+    g = ordered.groupby("Order Id")
+    qty = g["Order Item Quantity"].sum()
+    val = g["Order Item Total"].sum()
+    disc = g["Order Item Discount Rate"].mean()
+    dom_cat = g["Category Name"].agg(lambda s: s.mode().iat[0])
+    dom_dep = g["Department Name"].agg(lambda s: s.mode().iat[0])
+    n_cat = g["Category Name"].nunique()
+
+    base = base.set_index("Order Id")
+    base["Order Item Quantity"] = qty
+    base["Order Item Total"] = val
+    base["Order Item Product Price"] = (val / qty.replace(0, np.nan)).fillna(0.0)
+    base["Order Item Discount Rate"] = disc
+    base["Category Name"] = dom_cat
+    base["Department Name"] = dom_dep
+    base["n_categories"] = n_cat
+    base = base.reset_index().sort_values(DATE_COL).reset_index(drop=True)
+    return base
+
+
 def fit_encoders(df: pd.DataFrame) -> dict[str, LabelEncoder]:
     """Fit one label encoder per categorical column.
 

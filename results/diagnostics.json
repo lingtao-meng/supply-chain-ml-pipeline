@@ -1,89 +1,89 @@
 {
   "facts": {
-    "orders": 180519,
-    "late_rate": 0.5469950531522998,
-    "mean_delay": 0.5400096388745783,
-    "total_delay_days": 162514.0,
+    "orders": 65752,
+    "late_rate": 0.5470708115342499,
+    "mean_delay": 0.5404094172040395,
+    "total_delay_days": 59230.0,
     "date_min": "2015-01-01",
     "date_max": "2018-01-31"
   },
   "split": {
-    "train": 126363,
-    "valid": 27078,
-    "test": 27078
+    "train": 46026,
+    "valid": 9863,
+    "test": 9863
   },
-  "binary_auc": 0.7794472603107626,
-  "mae_p50": 0.9591432134495292,
+  "binary_auc": 0.7786796694454703,
+  "mae_p50": 1.0135570009182997,
   "coverage": {
-    "p10": 0.12183322254228525,
-    "p50": 0.6449885515916981,
-    "p90": 0.938067804121427
+    "p10": 0.12105850147014093,
+    "p50": 0.645341174084964,
+    "p90": 0.9353137990469431
   },
   "ceiling": {
-    "mode_base_rate_auc": 0.7802872042192098,
-    "model_auc": 0.7794472603107626,
-    "auc_gap": -0.000839943908447216,
+    "mode_base_rate_auc": 0.7783973440956047,
+    "model_auc": 0.7786796694454703,
+    "auc_gap": 0.00028232534986560864,
     "within_mode": {
       "Second Class": {
-        "n_test": 5395,
-        "late_rate": 0.802224281742354,
-        "auc": 0.5011888325101733
+        "n_test": 1923,
+        "late_rate": 0.8029121164846594,
+        "auc": 0.5079446183712251
       },
       "Standard Class": {
-        "n_test": 16047,
-        "late_rate": 0.3967719823019879,
-        "auc": 0.5008117705965808
+        "n_test": 5888,
+        "late_rate": 0.39894701086956524,
+        "auc": 0.5001223368724417
       }
     },
     "independence_tests": [
       {
         "feature": "Market",
-        "p_value": 0.10558631633867262,
-        "cramers_v": 0.007354766938498145,
+        "p_value": 0.994468077744186,
+        "cramers_v": 0.005767894863505529,
         "dof": 16
       },
       {
         "feature": "Category Name",
-        "p_value": 0.9999532742363763,
-        "cramers_v": 0.01722988706342811,
+        "p_value": 0.9999306630735955,
+        "cramers_v": 0.028680698131016757,
         "dof": 196
       },
       {
         "feature": "Customer Segment",
-        "p_value": 0.07132871085116452,
-        "cramers_v": 0.00818157199697071,
+        "p_value": 0.7178460182056876,
+        "cramers_v": 0.008259961001887703,
         "dof": 8
       },
       {
         "feature": "Type",
-        "p_value": 0.009523438405719927,
-        "cramers_v": 0.009031282684421821,
+        "p_value": 0.46215189127064005,
+        "cramers_v": 0.009999737169013503,
         "dof": 12
       },
       {
         "feature": "order_month",
-        "p_value": 0.004755702954971349,
-        "cramers_v": 0.012935233736996557,
+        "p_value": 0.9995020247072154,
+        "cramers_v": 0.011127452087049574,
         "dof": 44
       }
     ]
   },
   "costs": {
-    "oracle (hindsight)": 2120100.0,
-    "pmf exact (lookup)": 3058600.0,
-    "pmf 7-class model": 3068900.0,
-    "binary: cost-aware": 3069200.0,
-    "binary: tuned tau=0.05": 3194800.0,
-    "quantile grid (3 points)": 3258160.0,
-    "all express": 3346800.0,
-    "binary: p50 > 0 (legacy)": 3358100.0,
-    "budget $500k (pmf)": 3457000.0,
-    "capacity 25% (best-first)": 3776800.0,
-    "none (do nothing)": 4882200.0
+    "oracle (hindsight)": 771400.0,
+    "pmf exact (lookup)": 1115520.0,
+    "budget $500k (pmf)": 1115520.0,
+    "binary: cost-aware": 1116600.0,
+    "pmf 7-class model": 1126480.0,
+    "binary: tuned tau=0.09": 1163200.0,
+    "quantile grid (3 points)": 1205100.0,
+    "all express": 1217100.0,
+    "binary: p50 > 0 (legacy)": 1225600.0,
+    "capacity 25% (best-first)": 1377000.0,
+    "none (do nothing)": 1779600.0
   },
   "params": {
     "penalty": 200.0,
-    "n_estimators": 200,
-    "pmf_iter": 120
+    "n_estimators": 40,
+    "pmf_iter": 30
   }
 }
