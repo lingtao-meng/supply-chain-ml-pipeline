@@ -87,7 +87,7 @@ def summarise(
     srm_ok = bool(srm.get("ok", True))
     decisions = []
     for low, high, be, mode in zip(by_mode["ci_low"], by_mode["ci_high"],
-                                   by_mode["break_even"], by_mode["shipping_mode"]):  # noqa: B905
+                                   by_mode["break_even"], by_mode["shipping_mode"], strict=False):
         if not srm_ok:
             decisions.append("hold (SRM anomaly)")
         elif mode == "all" and not np.isfinite(be):
