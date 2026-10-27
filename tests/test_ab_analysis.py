@@ -74,6 +74,7 @@ class TestNoModeFallback(unittest.TestCase):
                 "treated": [0] * 100 + [1] * 100,
             }
         )
-        _, by = ab.summarise(frame, break_even={"all": 0.5}, penalty=200.0,
+        _, by = ab.summarise(frame, break_even={}, penalty=200.0,
                              express_cost=100.0, simulated=False)
         self.assertAlmostEqual(float(by.iloc[0]["net_value_per_order"]), 20.0, delta=2.0)
+        self.assertEqual(by.iloc[0]["decision"], "not evaluated (no break-even)")

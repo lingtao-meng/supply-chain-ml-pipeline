@@ -81,13 +81,20 @@ def summarise(
         by_mode = experiment.analyze_by_group(frame)
         by_mode["break_even"] = by_mode["shipping_mode"].map(break_even)
     else:
-        by_mode = pd.DataFrame([{**overall, "shipping_mode": "all", "break_even": float("nan")}])
+        by_mode = pd.DataFrame([{**overall, "shipping_mode": "all",
+                                 "break_even": break_even.get("all", float("nan"))}])
 
     srm_ok = bool(srm.get("ok", True))
-    by_mode["decision"] = [
-        experiment.rollout_decision(low, high, be) if srm_ok else "hold (SRM anomaly)"
-        for low, high, be in zip(by_mode["ci_low"], by_mode["ci_high"], by_mode["break_even"])  # noqa: B905
-    ]
+    decisions = []
+    for low, high, be, mode in zip(by_mode["ci_low"], by_mode["ci_high"],
+                                   by_mode["break_even"], by_mode["shipping_mode"]):  # noqa: B905
+        if not srm_ok:
+            decisions.append("hold (SRM anomaly)")
+        elif mode == "all" and not np.isfinite(be):
+            decisions.append("not evaluated (no break-even)")
+        else:
+            decisions.append(experiment.rollout_decision(low, high, be))
+    by_mode["decision"] = decisions
     if not srm_ok:
         srm["note"] = "SRM 检验未通过：分流比例异常，任何效应估计都不可信，已阻断上线建议"
     # 每个运输方式必须用**本组**的对照延迟：pooled 对照会混进 Same Day 这种
