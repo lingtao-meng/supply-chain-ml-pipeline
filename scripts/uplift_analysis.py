@@ -130,7 +130,7 @@ def main() -> int:
 
     targeting = []
     for name, score in scores.items():
-        frame = uplift.targeting_curve(score, effect_test, penalty, args.action_cost)
+        frame = uplift.targeting_curve(score, effect_test, penalty, args.action_cost, base_delay=target[test].to_numpy())
         frame["score"] = name
         targeting.append(frame)
     targeting_df = pd.concat(targeting, ignore_index=True)
