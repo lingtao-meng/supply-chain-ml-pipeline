@@ -170,6 +170,8 @@ pmf 与公平二分类的差距虽然显著，但 **$0.39/单 ≈ 0.35%**，不�
 
 ---
 
+> 以下结果 3–14 是旧 line 口径，只作对照；当前订单口径看结果 2 和 `results/summary.md`。
+
 ## 结果 3：为什么 3 个分位点不够
 
 ![pmf vs quantile](images/distribution_example.png)
