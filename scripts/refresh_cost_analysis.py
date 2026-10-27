@@ -625,6 +625,13 @@ def main() -> int:
             )
     sens = pd.DataFrame(sens_rows)
     sens.to_csv(results_dir / "sensitivity.csv", index=False)
+    q_gain = sens["advantage_pmf_vs_quantile_pct"]
+    b_gap = sens["advantage_pmf_vs_binary_pct"]
+    n_settings = len(sens)
+    q_gain_min, q_gain_max = float(q_gain.min()), float(q_gain.max())
+    b_gap_min, b_gap_max = float(b_gap.min()), float(b_gap.max())
+    binary_wins = int((b_gap < -1e-12).sum())
+    binary_ties = int((b_gap.abs() <= 1e-12).sum())
 
     # ------------------------------------------------------------------ capacity
     capacities = [0.10, 0.25, 0.50, 0.75, 1.00]
@@ -983,8 +990,10 @@ def main() -> int:
             "+.1%",
         ),
         "",
-        "The pmf beats the quantile grid in all 20 settings (0.07%–8.2%).",
-        "Against the fair binary baseline the gap is −0.005% to +2.6%, and binary wins 4 of 20 —",
+        f"The pmf beats the quantile grid in all {n_settings} settings "
+        f"({q_gain_min:.1%}–{q_gain_max:.1%}).",
+        f"Against the fair binary baseline the gap is {b_gap_min:+.2%} to {b_gap_max:+.2%}; "
+        f"binary wins {binary_wins} of {n_settings}, with {binary_ties} ties —",
         "i.e. model class barely matters; the distribution representation and the decision rule do.",
         "",
         "## The decision is a function of the economics",

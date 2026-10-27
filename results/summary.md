@@ -105,8 +105,8 @@ pmf cost advantage over the 3-point quantile grid (positive = pmf cheaper):
 | 300 | +3.6% | +4.5% | +1.8% | +8.3% | +6.7% |
 | 400 | +3.0% | +3.7% | +1.5% | +1.5% | +1.6% |
 
-The pmf beats the quantile grid in all 20 settings (0.07%–8.2%).
-Against the fair binary baseline the gap is −0.005% to +2.6%, and binary wins 4 of 20 —
+The pmf beats the quantile grid in all 20 settings (0.2%–8.3%).
+Against the fair binary baseline the gap is -0.01% to +1.74%; binary wins 3 of 20, with 2 ties —
 i.e. model class barely matters; the distribution representation and the decision rule do.
 
 ## The decision is a function of the economics
