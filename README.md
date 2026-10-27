@@ -15,6 +15,8 @@ make data        # 下载 91 MB 数据到 data/
 make reproduce   # 训练 → 诊断 → 成本表 → results/ + 模型包
 ```
 
+> **2026-10-27 复审后的口径**：CI 合成数据、分组 A/B、SRM 阻断、uplift 的 base_delay 和缓存键已修；A/B、uplift、pacing 等扩展结果以 `scripts/` 重新生成的 `results/*.json` 为准。文中早期 bootstrap、组内 AUC、累计迟到天数等段落保留为历史记录，不再当作当前结论。
+
 ---
 
 ## 架构一览
