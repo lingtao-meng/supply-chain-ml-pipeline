@@ -47,9 +47,9 @@ flowchart LR
 > 已完成订单口径重算：`summary.md` / `policy_comparison.csv` / `capacity_curve.csv` / `budget_curve.csv`。
 > **仍是行口径**：`pacing.csv` / `ab_*.csv` / `uplift*.csv`（独立脚本，尚未重跑），引用前需先重算。
 
-1. **0.78 的 AUC 不是模型没调好。** 只用运输方式查表就有 0.7784，18 个特征的模型是 0.7787（差 +0.0003）；把方式拆开看，方式内部 AUC 只有 0.50 左右，卡方检验也查不出残余关联（Standard Class 内部 Market p=0.994、Category p=1.000、Segment p=0.718）。延迟是方式内部均匀随机的，0.78 就是这份数据的信息上限。
-2. **延迟只有 -2 到 4 七个整数。** 用 P10/P50/P90 三个点去拼分布，会把一条平坦的分布拉成连续直线。同样的测试集，三点插值 $1.205M，直接建 7 类分布 $1.126M，差了 6.5%。
-3. **我原来写“分位数回归比二分类好 34%”，这个结论站不住。** 旧基线是 `p50>0` 就加急，在 $100 加急成本下约等于全量加急。给二分类同样的期望成本决策层，成本是 $1.1166M，和 7 类 pmf 只差 0.9%。
+1. **0.78 的 AUC 不是模型没调好。** 只用运输方式查表就有 0.7784，18 个特征的模型是 0.7795（差 +0.0011）；把方式拆开看，方式内部 AUC 只有 0.50 左右，卡方检验也查不出残余关联（Standard Class 内部 Market p=0.994、Category p=1.000、Segment p=0.718）。延迟是方式内部均匀随机的，0.78 就是这份数据的信息上限。
+2. **延迟只有 -2 到 4 七个整数。** 用 P10/P50/P90 三个点去拼分布，会把一条平坦的分布拉成连续直线。同样的测试集，三点插值 $1.2035M，直接建 7 类分布 $1.1303M，差了 6.1%。
+3. **我原来写“分位数回归比二分类好 34%”，这个结论站不住。** 旧基线是 `p50>0` 就加急，在 $100 加急成本下约等于全量加急。给二分类同样的期望成本决策层，成本是 $1.1281M，和 7 类 pmf 只差 1.1%。
 4. **决定成本的主要不是模型，是决策规则和成本参数。** 同一批订单，11 个策略从 $0.771M 到 $1.780M；罚金从 $100 改到 $400，加急比例能从 0% 跳到 94%。
 5. **参数再不确定一点，模型会消失。** 宽区间（罚金 $100–400、加急 $50–150）下 minimax regret 退化成“除 Same Day 外全加急”；窄区间（±25%）下基准策略本身就是最优。
 6. **干预效果我没法从这份数据里估出来。** 所以只算了回本点和做 A/B 需要的样本量。注意：`ab_analysis` 那一组回本天数还是旧口径（未重跑），引用前需先重算。
@@ -467,7 +467,7 @@ pip install -r requirements-service.txt   # 只有跑 HTTP API / Docker 时需�
 
 make data        # 或手动放 data/DataCoSupplyChainDataset.csv
 make reproduce   # 全部数字：results/ + images/ + models/model_bundle.joblib
-make test        # 104 个单测，不需要数据集
+make test        # 106 个单测，不需要数据集
 make smoke       # 合成数据端到端（CI 同款）
 make drift       # 月度 PSI 漂移报告
 make app         # Streamlit 演示（单笔 + 批量）
@@ -509,7 +509,7 @@ scripts/uplift_analysis.py         异质效应与定向干预
 api/main.py                        FastAPI /score 服务
 Dockerfile                         容器镜像
 app/app.py                         Streamlit：输入订单 → 分布 → 期望成本 → 动作
-tests/                             104 个单测 + 合成数据夹具（CI 用）
+tests/                             106 个单测 + 合成数据夹具（CI 用）
 notebooks/                         探索过程（成本口径已统一到 src/policy.py）
 results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv、drift_report.csv…
 images/                            13 张由脚本生成的图 + notebook 探索图

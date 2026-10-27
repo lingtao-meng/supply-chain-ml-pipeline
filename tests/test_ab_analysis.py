@@ -63,3 +63,17 @@ class TestSrmGate(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestNoModeFallback(unittest.TestCase):
+    def test_no_shipping_mode_uses_all_control_delays(self):
+        # control delay 0.6, effect 1.0, penalty 200, action 100 -> 20/order
+        frame = pd.DataFrame(
+            {
+                "delay_days": [0.6] * 100 + [-0.4] * 100,
+                "treated": [0] * 100 + [1] * 100,
+            }
+        )
+        _, by = ab.summarise(frame, break_even={"all": 0.5}, penalty=200.0,
+                             express_cost=100.0, simulated=False)
+        self.assertAlmostEqual(float(by.iloc[0]["net_value_per_order"]), 20.0, delta=2.0)

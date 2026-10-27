@@ -92,6 +92,7 @@ def summarise(
         srm["note"] = "SRM 检验未通过：分流比例异常，任何效应估计都不可信，已阻断上线建议"
     # 每个运输方式必须用**本组**的对照延迟：pooled 对照会混进 Same Day 这种
     # 本来就不晚的订单，把净收益压成 0（复审 S2 的最小反例）。
+    control_all = frame.loc[frame["treated"] == 0, "delay_days"].to_numpy(dtype=float)
     ctrl_by_mode: dict = {}
     if "shipping_mode" in frame.columns:
         ctrl_by_mode = {
@@ -100,9 +101,9 @@ def summarise(
         }
     net_values, upper_bounds = [], []
     for _, row in by_mode.iterrows():
-        ctrl = ctrl_by_mode.get(row["shipping_mode"]) if ctrl_by_mode else None
-        if ctrl is not None and getattr(ctrl, "size", 0) == 0:
-            ctrl = None
+        ctrl = ctrl_by_mode.get(row["shipping_mode"]) if ctrl_by_mode else control_all
+        if ctrl is None or getattr(ctrl, "size", 0) == 0:
+            ctrl = control_all
         net_values.append(experiment.net_value(row["reduction"], penalty, express_cost, ctrl))
         upper_bounds.append(experiment.net_value(row["reduction"], penalty, express_cost))
     by_mode["net_value_per_order"] = net_values
