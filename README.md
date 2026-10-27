@@ -15,7 +15,7 @@ make data        # 下载 91 MB 数据到 data/
 make reproduce   # 训练 → 诊断 → 成本表 → results/ + 模型包
 ```
 
-> **2026-10-27 复审后的口径**：CI 合成数据、分组 A/B、SRM 阻断、uplift 的 base_delay 和缓存键已修；A/B、uplift、pacing 等扩展结果以 `scripts/` 重新生成的 `results/*.json` 为准。文中早期 bootstrap、组内 AUC、累计迟到天数等段落保留为历史记录，不再当作当前结论。
+> **2026-10-27 复审后的口径（重要）**：主流程已改成按订单聚合，完整模式测试集是 **9,863 单**，不是文中旧表的 27,078 单；pmf 成本 **$1,115,520**，不是 $3.06M。当前可复现数字以 `results/summary.md` 和 `results/*.csv/json` 为准。下面所有按明细（line）口径写的策略表、bootstrap、预算/产能和扩展分析都只作历史记录，不再当作当前结论。CI 合成数据、分组 A/B、SRM 阻断、uplift 的 base_delay 和缓存键已修。
 
 ---
 

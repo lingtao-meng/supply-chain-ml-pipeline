@@ -12,22 +12,22 @@
     "valid": 9863,
     "test": 9863
   },
-  "binary_auc": 0.7786796694454703,
-  "mae_p50": 1.0135570009182997,
+  "binary_auc": 0.7794631248852956,
+  "mae_p50": 1.012573695986236,
   "coverage": {
     "p10": 0.12105850147014093,
-    "p50": 0.645341174084964,
-    "p90": 0.9353137990469431
+    "p50": 0.6201966947176315,
+    "p90": 0.9296360133833519
   },
   "ceiling": {
     "mode_base_rate_auc": 0.7783973440956047,
-    "model_auc": 0.7786796694454703,
-    "auc_gap": 0.00028232534986560864,
+    "model_auc": 0.7794631248852956,
+    "auc_gap": 0.0010657807896908844,
     "within_mode": {
       "Second Class": {
         "n_test": 1923,
         "late_rate": 0.8029121164846594,
-        "auc": 0.5079446183712251
+        "auc": 0.5075678086592752
       },
       "Standard Class": {
         "n_test": 5888,
@@ -72,18 +72,18 @@
     "oracle (hindsight)": 771400.0,
     "pmf exact (lookup)": 1115520.0,
     "budget $500k (pmf)": 1115520.0,
-    "binary: cost-aware": 1116600.0,
-    "pmf 7-class model": 1126480.0,
-    "binary: tuned tau=0.09": 1163200.0,
-    "quantile grid (3 points)": 1205100.0,
+    "binary: cost-aware": 1128120.0,
+    "pmf 7-class model": 1130320.0,
+    "binary: tuned tau=0.05": 1163200.0,
+    "quantile grid (3 points)": 1203520.0,
     "all express": 1217100.0,
-    "binary: p50 > 0 (legacy)": 1225600.0,
+    "binary: p50 > 0 (legacy)": 1261600.0,
     "capacity 25% (best-first)": 1377000.0,
     "none (do nothing)": 1779600.0
   },
   "params": {
     "penalty": 200.0,
-    "n_estimators": 40,
-    "pmf_iter": 30
+    "n_estimators": 200,
+    "pmf_iter": 120
   }
 }
