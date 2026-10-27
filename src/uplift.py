@@ -103,6 +103,7 @@ def targeting_curve(
     effect: np.ndarray,
     penalty: float,
     action_cost: float,
+    base_delay=None,
     fractions=(0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.75, 1.00),
 ) -> pd.DataFrame:
     """Net saving when treating the top-k orders by a score.
@@ -117,7 +118,13 @@ def targeting_curve(
     for fraction in fractions:
         k = max(1, int(round(fraction * n)))
         selected = np.argsort(-scores)[:k]
-        benefit = float(penalty * effect[selected].sum())
+        if base_delay is None:
+            # 无对照延迟时只能给上界：早期订单本来就不赔钱，这里却按全额计入
+            benefit = float(penalty * effect[selected].sum())
+        else:
+            d = np.asarray(base_delay, dtype=float)[selected]
+            e = effect[selected]
+            benefit = float(penalty * (np.maximum(d, 0.0) - np.maximum(d - e, 0.0)).sum())
         cost = float(action_cost * k)
         rows.append(
             {

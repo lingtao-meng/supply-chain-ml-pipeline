@@ -104,6 +104,7 @@ def fit_or_load(split, args, data_fp: str):
 
     key = {
         "cache_version": CACHE_VERSION,
+        "unit": getattr(args, "unit", "line"),   # order 与 line 的训练矩阵不同，必须分开缓存
         "data_fp": data_fp,
         "n_estimators": args.n_estimators,
         "pmf_iter": args.pmf_iter,

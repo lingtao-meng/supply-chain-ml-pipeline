@@ -33,36 +33,50 @@ TYPES = ["DEBIT", "TRANSFER", "CASH"]
 
 
 def generate_frame(n: int = 1500, seed: int = 0) -> pd.DataFrame:
+    """Synthetic DataCo-shaped frame with order / order-line identifiers.
+
+    Orders are generated first and then expanded into 1–3 lines each, so that
+    date, shipping mode and delay are constant within an ``Order Id`` — the
+    same invariant the real dataset has.  ``to_order_level`` depends on it, so
+    the fixture must exercise it (a 1-line-per-order fixture would never catch
+    a regression in the aggregation).
+    """
     rng = np.random.default_rng(seed)
-    order_date = pd.Timestamp("2016-01-01") + pd.to_timedelta(rng.integers(0, 700, n), unit="D")
-    mode = rng.choice(list(MODES), size=n, p=[0.05, 0.15, 0.2, 0.6])
+    n_orders = max(n // 2, 1)
+    order_date = pd.Timestamp("2016-01-01") + pd.to_timedelta(rng.integers(0, 700, n_orders), unit="D")
+    mode = rng.choice(list(MODES), size=n_orders, p=[0.05, 0.15, 0.2, 0.6])
     scheduled = np.array([MODES[m][0] for m in mode])
     delay = np.array([rng.choice(MODES[m][1]) for m in mode])
 
-    qty = rng.integers(1, 10, n)
-    price = np.round(rng.uniform(10, 500, n), 2)
-    discount = np.round(rng.uniform(0, 0.3, n), 2)
-
-    df = pd.DataFrame(
+    orders = pd.DataFrame(
         {
-            "Type": rng.choice(TYPES, n),
+            "Order Id": np.arange(1, n_orders + 1),
+            "Type": rng.choice(TYPES, n_orders),
             "Days for shipping (real)": scheduled + delay,
             "Days for shipment (scheduled)": scheduled,
             "Delivery Status": np.where(delay > 0, "Late delivery", "Shipping on time"),
             "Late_delivery_risk": (delay > 0).astype(int),
-            "Category Name": rng.choice(CATEGORIES, n),
-            "Customer Segment": rng.choice(SEGMENTS, n),
-            "Department Name": rng.choice(DEPARTMENTS, n),
-            "Market": rng.choice(MARKETS, n),
+            "Category Name": rng.choice(CATEGORIES, n_orders),
+            "Customer Segment": rng.choice(SEGMENTS, n_orders),
+            "Department Name": rng.choice(DEPARTMENTS, n_orders),
+            "Market": rng.choice(MARKETS, n_orders),
             "Shipping Mode": mode,
             "order date (DateOrders)": order_date,
             "shipping date (DateOrders)": order_date + pd.to_timedelta(scheduled + delay, unit="D"),
-            "Order Item Quantity": qty,
-            "Order Item Product Price": price,
-            "Order Item Discount Rate": discount,
-            "Order Item Total": np.round(qty * price * (1 - discount), 2),
         }
     )
+
+    lines_per_order = rng.integers(1, 4, size=n_orders)  # 1–3 lines
+    df = orders.loc[np.repeat(orders.index, lines_per_order)].reset_index(drop=True)
+    n_lines = len(df)
+    qty = rng.integers(1, 10, n_lines)
+    price = np.round(rng.uniform(10, 500, n_lines), 2)
+    discount = np.round(rng.uniform(0, 0.3, n_lines), 2)
+    df["Order Item Id"] = np.arange(1, n_lines + 1)
+    df["Order Item Quantity"] = qty
+    df["Order Item Product Price"] = price
+    df["Order Item Discount Rate"] = discount
+    df["Order Item Total"] = np.round(qty * price * (1 - discount), 2)
     return df.sort_values("order date (DateOrders)").reset_index(drop=True)
 
 
