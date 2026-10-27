@@ -15,7 +15,7 @@ make data        # 下载 91 MB 数据到 data/
 make reproduce   # 训练 → 诊断 → 成本表 → results/ + 模型包
 ```
 
-> **2026-10-27 复审后的口径（重要）**：主流程已改成按订单聚合，完整模式测试集是 **9,863 单**，不是文中旧表的 27,078 单；pmf 成本 **$1,115,520**，不是 $3.06M。当前可复现数字以 `results/summary.md` 和 `results/*.csv/json` 为准。下面所有按明细（line）口径写的策略表、bootstrap、预算/产能和扩展分析都只作历史记录，不再当作当前结论。CI 合成数据、分组 A/B、SRM 阻断、uplift 的 base_delay 和缓存键已修。
+> **2026-10-27 完整重跑口径**：主流程按订单聚合，完整模式测试集 **9,863 单**，pmf 成本 **$1,115,520**。当前数字以 `results/summary.md` 和 `results/*.csv/json` 为准；文末标了“历史（line 口径）”的章节只作对照。CI 合成数据、分组 A/B、SRM 阻断、uplift 的 base_delay 和缓存键已修。
 
 ---
 
@@ -100,6 +100,10 @@ DataCo Supply Chain Dataset（Kaggle 公开数据）。180,519 行订单明细�
 | 加急 | $100 | 减 2 天 |
 
 ---
+
+## 历史结果（line 口径，仅作对照）
+
+> 下面结果 1–14 大多是旧 line 口径。当前 order 口径结果看本文开头的 v3 说明和 `results/summary.md`。
 
 ## 结果 1：0.78 是信息天花板
 
