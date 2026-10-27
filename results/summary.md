@@ -89,8 +89,8 @@ trades nominal cost for a cap on the worst case — how much depends on the unce
 | narrow band (nominal +/-25%) | 26.25 | 26.25 | 4.73 | 4.73 | 0.00 | 0.05 | 0.60 | 0.35 |
 
 With a wide band the robust rule becomes a blunt hedge (express everything except Same Day):
-worst-case regret falls ~13% but it costs $136k more at the nominal scenario.
-With a +/-25% band the nominal policy is already minimax-optimal, so robustness is free.
+worst-case regret falls 13% but it costs $47,680 more at the nominal scenario.
+With a +/-25% band the nominal policy is already minimax-optimal, so robustness is free (premium $0).
 Read it as: the value of robustness is a function of how uncertain the economics are —
 and under wide uncertainty the model stops mattering at all.
 
@@ -161,8 +161,7 @@ $200/day assumption, not of the data. Any real deployment has to calibrate this 
 | 1500000.000 | 1115520.000 | 1117141.849 | 461360.000 | 9324 | 5888 | 3436 | 0.945 | 1.000 | 0.580 |
 | 2707800.000 | 1115520.000 | 1117141.849 | 461360.000 | 9324 | 5888 | 3436 | 0.945 | 1.000 | 0.580 |
 
-The first $500k buys notifications for almost every order; the next $500k upgrades them
-to express; $1.5M already reaches the unconstrained optimum ($1.27M of action spend).
+At $500,000 the policy already reaches the unconstrained optimum ($1,115,520 total, $461,360 action spend); more budget does not change the decision.
 That is the order a planner should spend in — not the order the model scores highest.
 
 ## Related outputs

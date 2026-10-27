@@ -576,6 +576,11 @@ def main() -> int:
         )
     rob = pd.DataFrame(rob_rows)
     rob_summary_df = pd.DataFrame(rob_summary)
+    wide_row = rob_summary_df[rob_summary_df["scenario_set"].str.contains("wide")].iloc[0]
+    narrow_row = rob_summary_df[rob_summary_df["scenario_set"].str.contains("narrow")].iloc[0]
+    wide_premium = float(wide_row["premium_at_nominal"])
+    narrow_premium = float(narrow_row["premium_at_nominal"])
+    wide_regret_drop = 1 - float(wide_row["worst_regret_robust"]) / float(wide_row["worst_regret_nominal"])
     rob.to_csv(results_dir / "robustness.csv", index=False)
     rob_summary_df.to_csv(results_dir / "robustness_summary.csv", index=False)
     for _, row in rob_summary_df.iterrows():
@@ -642,6 +647,7 @@ def main() -> int:
     # ------------------------------------------------------------------ budget
     budgets = [0, 100_000, 250_000, 500_000, 750_000, 1_000_000, 1_500_000, 2_707_800]
     bc = policy.budget_curve(pmf_lookup, delay, pen, budgets)
+    opt_row = bc.loc[bc["total_cost"].idxmin()]
     bc.to_csv(results_dir / "budget_curve.csv", index=False)
 
     # ------------------------------------------------------------------ figures
@@ -960,8 +966,8 @@ def main() -> int:
         df_to_markdown(rob_summary_df, ".2f"),
         "",
         "With a wide band the robust rule becomes a blunt hedge (express everything except Same Day):",
-        "worst-case regret falls ~13% but it costs $136k more at the nominal scenario.",
-        "With a +/-25% band the nominal policy is already minimax-optimal, so robustness is free.",
+        f"worst-case regret falls {wide_regret_drop:.0%} but it costs ${wide_premium:,.0f} more at the nominal scenario.",
+        f"With a +/-25% band the nominal policy is already minimax-optimal, so robustness is free (premium ${narrow_premium:,.0f}).",
         "Read it as: the value of robustness is a function of how uncertain the economics are —",
         "and under wide uncertainty the model stops mattering at all.",
         "",
@@ -1022,8 +1028,9 @@ def main() -> int:
         "",
         df_to_markdown(bc, ".3f"),
         "",
-        "The first $500k buys notifications for almost every order; the next $500k upgrades them",
-        "to express; $1.5M already reaches the unconstrained optimum ($1.27M of action spend).",
+        f"At ${opt_row['budget']:,.0f} the policy already reaches the unconstrained optimum "
+        f"(${opt_row['total_cost']:,.0f} total, ${opt_row['action_spend']:,.0f} action spend); "
+        "more budget does not change the decision.",
         "That is the order a planner should spend in — not the order the model scores highest.",
         "",
         "## Related outputs",
