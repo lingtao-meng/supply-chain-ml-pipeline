@@ -116,6 +116,11 @@ def summarise(
         upper_bounds.append(experiment.net_value(row["reduction"], penalty, express_cost))
     by_mode["net_value_per_order"] = net_values
     by_mode["net_value_upper_bound"] = upper_bounds
+    # 效应 CI 过回本点，不代表扣掉行动成本后还赚钱；净收益为负时不能建议上线。
+    by_mode["decision"] = [
+        "do not roll out (negative net value)" if d == "roll out" and v <= 0 else d
+        for d, v in zip(by_mode["decision"], by_mode["net_value_per_order"])  # noqa: B905
+    ]
     if simulated and "true_effect" in frame.columns:
         truth = frame.groupby("shipping_mode")["true_effect"].first()
         by_mode["true_effect"] = by_mode["shipping_mode"].map(truth)

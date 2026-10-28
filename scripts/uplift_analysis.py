@@ -89,18 +89,22 @@ def main() -> int:
     bundle = scoring.load_bundle(args.bundle)
     penalty = float(bundle["params"]["penalty"] if args.penalty is None else args.penalty)
 
-    df = pipeline.load_orders(str(pipeline.find_data(args.data)))
-    features, target = pipeline.build_features(df)
+    df = pipeline.to_order_level(pipeline.load_orders(str(pipeline.find_data(args.data))))
+    # 编码器只在训练窗口拟合；否则测试期新类别会被提前看到。
+    n = len(df)
+    train_end = int(n * 0.70)
+    encoders = pipeline.fit_encoders(df.iloc[:train_end])
+    features, target = pipeline.build_features(df, encoders)
     split = pipeline.time_split(features, target)
 
     train = split.train_index
     test = split.test_index
-    X_train = features.iloc[train].to_numpy()
-    X_test = features.iloc[test].to_numpy()
+    X_train = split.X_train
+    X_test = split.X_test
     df_train = df.iloc[train]
     df_test = df.iloc[test]
 
-    high_value_threshold = float(np.quantile(df["Order Item Total"], 0.75))
+    high_value_threshold = float(np.quantile(df_train["Order Item Total"], 0.75))
     effect_train = true_effect(df_train, high_value_threshold)
     effect_test = true_effect(df_test, high_value_threshold)
 
@@ -114,7 +118,7 @@ def main() -> int:
     model = uplift.fit_t_learner(X_train, treated_train, outcome_train)
     cate = model.predict_cate(X_test)
 
-    p_late = bundle["binary"].predict_proba(split.X_test)[:, 1]
+    p_late = bundle["binary"].predict_proba(X_test)[:, 1]
     gain = pmf_gain(bundle, df_test, penalty, args.action_cost)
     rng = np.random.default_rng(args.seed)
     scores = {

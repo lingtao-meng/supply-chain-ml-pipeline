@@ -78,3 +78,19 @@ class TestNoModeFallback(unittest.TestCase):
                              express_cost=100.0, simulated=False)
         self.assertAlmostEqual(float(by.iloc[0]["net_value_per_order"]), 20.0, delta=2.0)
         self.assertEqual(by.iloc[0]["decision"], "not evaluated (no break-even)")
+
+
+class TestNegativeNetValueGate(unittest.TestCase):
+    def test_effect_above_break_even_but_net_value_negative(self):
+        # 99% 的对照订单本来就不晚；缩短 0.6 天只救到极少数订单，
+        # 扣掉 $100 加急费后净收益为负，不能因为 CI 过回本点就上线。
+        frame = pd.DataFrame(
+            {
+                "delay_days": [0.0] * 99 + [10.0] + [-0.5] * 100,
+                "treated": [0] * 100 + [1] * 100,
+            }
+        )
+        _, by = ab.summarise(frame, break_even={"all": 0.01}, penalty=200.0,
+                             express_cost=100.0, simulated=False)
+        self.assertLess(float(by.iloc[0]["net_value_per_order"]), 0)
+        self.assertEqual(by.iloc[0]["decision"], "do not roll out (negative net value)")
