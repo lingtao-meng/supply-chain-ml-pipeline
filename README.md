@@ -45,7 +45,7 @@ flowchart LR
 > 此前所有成本按「行」计，同一个订单会被计费 2.75 次。现在改为**按订单聚合**后再算，
 > 结论表与 `results/` 已全部重新生成；行口径可用 `--unit line` 复现，便于对照。
 > 已完成订单口径重算：`summary.md` / `policy_comparison.csv` / `capacity_curve.csv` / `budget_curve.csv`。
-> **仍是行口径**：`pacing.csv` / `ab_*.csv` / `uplift*.csv`（独立脚本，尚未重跑），引用前需先重算。
+> **口径**：`pacing.csv` 仍是行口径；`ab_*.csv` / `uplift*.csv` 已按订单口径重跑。
 
 1. **0.78 的 AUC 不是模型没调好。** 只用运输方式查表就有 0.7784，18 个特征的模型是 0.7795（差 +0.0011）；把方式拆开看，方式内部 AUC 只有 0.50 左右，卡方检验也查不出残余关联（Standard Class 内部 Market p=0.994、Category p=1.000、Segment p=0.718）。延迟是方式内部均匀随机的，0.78 就是这份数据的信息上限。
 2. **延迟只有 -2 到 4 七个整数。** 用 P10/P50/P90 三个点去拼分布，会把一条平坦的分布拉成连续直线。同样的测试集，三点插值 $1.2035M，直接建 7 类分布 $1.1303M，差了 6.1%。
@@ -350,7 +350,7 @@ Market 在 2016 年切到 USCA / Pacific Asia，2017 年又切回 Europe / LATAM
 
 测试期 8 个月。把预算按月释放，和一次性全局分配比：
 
-> ⚠️ 下表与下面几组结果（pacing / A/B / uplift）**仍是行口径**——它们由独立脚本生成，尚未按订单重跑。可以和上文对照看趋势，但**不要和订单口径的金额相加或比较**。
+> ⚠️ `pacing` 仍是行口径；A/B 和 uplift 已按订单口径重跑。旧表只作对照，不要和订单口径金额相加。
 
 | 总预算 | 全局（有前瞻） | 月度（不结转） | 月度 + 结转 |
 |---|---|---|---|
@@ -416,13 +416,13 @@ $500k 时差距最大：月度节奏的迟到召回只有 85%，全局是 98.5%�
 
 | 定向比例 | CATE（uplift） | p_late（风险） | pmf_gain（恒定效应） | 随机 | Oracle |
 |---|---|---|---|---|---|
-| 10% | **$1.06M** | $0.21M | $0.64M | $0.50M | $1.21M |
-| 20% | **$2.04M** | $0.61M | $1.22M | $0.99M | $2.18M |
-| 30% | **$2.80M** | $1.19M | $1.43M | $1.47M | $2.95M |
+| 10% | **$52.7k** | −$1.7k | $97.9k | $9.3k | $64.9k |
+| 20% | **$63.6k** | $51.8k | $194.2k | $14.6k | $115.3k |
+| 30% | **$70.7k** | $144.6k | $193.0k | $20.1k | $148.2k |
 
-AUUC **0.83**（模拟中加入不可观测的异质性，避免“完美排序”的假象）。
+AUUC **0.706**（模拟中加入不可观测的异质性，避免“完美排序”的假象）。
 
-最反直觉的结论：**按迟到风险排序，在三个比例下都比随机还差**。因为高风险集中在
+10% 定向时，按迟到风险排序甚至比随机差；到 20%/30% 才反超。原因还是高风险集中在
 Second/Standard 的低价值订单——它们“容易晚”，但加急对它们的效果并不大；而高价值订单
 效果更高、风险却不一定高。风险模型回答“会不会晚”，uplift 回答“干预有没有用”，这俩不是一回事。
 
@@ -469,7 +469,7 @@ pip install -r requirements-service.txt   # 只有跑 HTTP API / Docker 时需�
 
 make data        # 或手动放 data/DataCoSupplyChainDataset.csv
 make reproduce   # 全部数字：results/ + images/ + models/model_bundle.joblib
-make test        # 107 个单测，不需要数据集
+make test        # 108 个单测，不需要数据集
 make smoke       # 合成数据端到端（CI 同款）
 make drift       # 月度 PSI 漂移报告
 make app         # Streamlit 演示（单笔 + 批量）
@@ -511,7 +511,7 @@ scripts/uplift_analysis.py         异质效应与定向干预
 api/main.py                        FastAPI /score 服务
 Dockerfile                         容器镜像
 app/app.py                         Streamlit：输入订单 → 分布 → 期望成本 → 动作
-tests/                             107 个单测 + 合成数据夹具（CI 用）
+tests/                             108 个单测 + 合成数据夹具（CI 用）
 notebooks/                         探索过程（成本口径已统一到 src/policy.py）
 results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv、drift_report.csv…
 images/                            13 张由脚本生成的图 + notebook 探索图
