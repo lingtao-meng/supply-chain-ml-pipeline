@@ -99,21 +99,15 @@ def summarise(
         }
     cost_all = (frame.loc[frame["treated"] == 0, "_cost"].to_numpy(),
                 frame.loc[frame["treated"] == 1, "_cost"].to_numpy())
-    # 每个运输方式必须用**本组**的对照延迟：pooled 对照会混进 Same Day 这种
-    # 本来就不晚的订单，把净收益压成 0（复审 S2 的最小反例）。
-    control_all = frame.loc[frame["treated"] == 0, "delay_days"].to_numpy(dtype=float)
-    ctrl_by_mode: dict = {}
-    if "shipping_mode" in frame.columns:
-        ctrl_by_mode = {
-            mode: chunk.loc[chunk["treated"] == 0, "delay_days"].to_numpy(dtype=float)
-            for mode, chunk in frame.groupby("shipping_mode")
-        }
+    # 每个运输方式用自己的对照/处理成本，避免混进 Same Day 这种本来就不晚的订单。
     net_values, lower_bounds, upper_bounds, decisions = [], [], [], []
     for _, row in by_mode.iterrows():
         mode = row["shipping_mode"]
         ctrl_cost, trt_cost = cost_by_mode.get(mode, cost_all) if cost_by_mode else cost_all
         if len(ctrl_cost) < 2 or len(trt_cost) < 2:
-            net_values.append(float("nan")); lower_bounds.append(float("nan")); upper_bounds.append(float("nan"))
+            net_values.append(float("nan"))
+            lower_bounds.append(float("nan"))
+            upper_bounds.append(float("nan"))
             decisions.append("not evaluated (no cost estimate)")
             continue
         cost_est = experiment.welch_reduction(ctrl_cost, trt_cost)
