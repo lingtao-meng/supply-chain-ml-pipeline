@@ -35,7 +35,7 @@
       "net_value_ci_low": 77.83423107665182,
       "net_value_ci_high": 81.46371703108856,
       "decision": "roll out",
-      "true_effect": 0.0
+      "true_effect": 1.0
     },
     {
       "shipping_mode": "Same Day",
@@ -53,7 +53,7 @@
       "net_value_ci_low": -118.40172463273511,
       "net_value_ci_high": -115.02946144474735,
       "decision": "do not roll out (negative net value)",
-      "true_effect": 0.0
+      "true_effect": 0.05
     },
     {
       "shipping_mode": "Second Class",
@@ -71,7 +71,7 @@
       "net_value_ci_low": 158.30644411817252,
       "net_value_ci_high": 198.96549243979626,
       "decision": "roll out",
-      "true_effect": 0.0
+      "true_effect": 2.0
     },
     {
       "shipping_mode": "Standard Class",
@@ -89,7 +89,7 @@
       "net_value_ci_low": 5.409145426423166,
       "net_value_ci_high": 25.007461156986565,
       "decision": "roll out",
-      "true_effect": 0.0
+      "true_effect": 2.0
     }
   ],
   "params": {

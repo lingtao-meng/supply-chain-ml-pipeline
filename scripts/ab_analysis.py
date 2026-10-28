@@ -137,7 +137,7 @@ def summarise(
     if not srm_ok:
         srm["note"] = "SRM 检验未通过：分流比例异常，任何效应估计都不可信，已阻断上线建议"
     if simulated and "true_effect" in frame.columns:
-        truth = frame.groupby("shipping_mode")["true_effect"].first()
+        truth = frame[frame["treated"] == 1].groupby("shipping_mode")["true_effect"].first()
         by_mode["true_effect"] = by_mode["shipping_mode"].map(truth)
 
     summary = {
