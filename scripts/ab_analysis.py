@@ -85,19 +85,20 @@ def summarise(
                                  "break_even": break_even.get("all", float("nan"))}])
 
     srm_ok = bool(srm.get("ok", True))
-    decisions = []
-    for low, high, be, mode in zip(  # noqa: B905
-        by_mode["ci_low"], by_mode["ci_high"], by_mode["break_even"], by_mode["shipping_mode"]
-    ):
-        if not srm_ok:
-            decisions.append("hold (SRM anomaly)")
-        elif mode == "all" and not np.isfinite(be):
-            decisions.append("not evaluated (no break-even)")
-        else:
-            decisions.append(experiment.rollout_decision(low, high, be))
-    by_mode["decision"] = decisions
-    if not srm_ok:
-        srm["note"] = "SRM 检验未通过：分流比例异常，任何效应估计都不可信，已阻断上线建议"
+    # 直接比较每单实际成本：罚金按正延迟计，干预费只对处理组计。
+    # 平均缩短天数不等于净收益，尤其当对照订单本来就不晚时。
+    frame = frame.copy()
+    frame["_cost"] = penalty * np.maximum(frame["delay_days"].to_numpy(dtype=float), 0.0) \
+        + express_cost * frame["treated"].to_numpy(dtype=float)
+    cost_by_mode = {}
+    if "shipping_mode" in frame.columns:
+        cost_by_mode = {
+            mode: (chunk.loc[chunk["treated"] == 0, "_cost"].to_numpy(),
+                   chunk.loc[chunk["treated"] == 1, "_cost"].to_numpy())
+            for mode, chunk in frame.groupby("shipping_mode")
+        }
+    cost_all = (frame.loc[frame["treated"] == 0, "_cost"].to_numpy(),
+                frame.loc[frame["treated"] == 1, "_cost"].to_numpy())
     # 每个运输方式必须用**本组**的对照延迟：pooled 对照会混进 Same Day 这种
     # 本来就不晚的订单，把净收益压成 0（复审 S2 的最小反例）。
     control_all = frame.loc[frame["treated"] == 0, "delay_days"].to_numpy(dtype=float)
@@ -107,20 +108,34 @@ def summarise(
             mode: chunk.loc[chunk["treated"] == 0, "delay_days"].to_numpy(dtype=float)
             for mode, chunk in frame.groupby("shipping_mode")
         }
-    net_values, upper_bounds = [], []
+    net_values, lower_bounds, upper_bounds, decisions = [], [], [], []
     for _, row in by_mode.iterrows():
-        ctrl = ctrl_by_mode.get(row["shipping_mode"]) if ctrl_by_mode else control_all
-        if ctrl is None or getattr(ctrl, "size", 0) == 0:
-            ctrl = control_all
-        net_values.append(experiment.net_value(row["reduction"], penalty, express_cost, ctrl))
-        upper_bounds.append(experiment.net_value(row["reduction"], penalty, express_cost))
+        mode = row["shipping_mode"]
+        ctrl_cost, trt_cost = cost_by_mode.get(mode, cost_all) if cost_by_mode else cost_all
+        if len(ctrl_cost) < 2 or len(trt_cost) < 2:
+            net_values.append(float("nan")); lower_bounds.append(float("nan")); upper_bounds.append(float("nan"))
+            decisions.append("not evaluated (no cost estimate)")
+            continue
+        cost_est = experiment.welch_reduction(ctrl_cost, trt_cost)
+        net_values.append(float(cost_est.reduction))
+        lower_bounds.append(float(cost_est.ci_low))
+        upper_bounds.append(float(cost_est.ci_high))
+        if not srm_ok:
+            decisions.append("hold (SRM anomaly)")
+        elif mode == "all" and not np.isfinite(row["break_even"]):
+            decisions.append("not evaluated (no break-even)")
+        elif cost_est.ci_low > 0:
+            decisions.append("roll out")
+        elif cost_est.ci_high < 0:
+            decisions.append("do not roll out (negative net value)")
+        else:
+            decisions.append("inconclusive")
     by_mode["net_value_per_order"] = net_values
-    by_mode["net_value_upper_bound"] = upper_bounds
-    # 效应 CI 过回本点，不代表扣掉行动成本后还赚钱；净收益为负时不能建议上线。
-    by_mode["decision"] = [
-        "do not roll out (negative net value)" if d == "roll out" and v <= 0 else d
-        for d, v in zip(by_mode["decision"], by_mode["net_value_per_order"])  # noqa: B905
-    ]
+    by_mode["net_value_ci_low"] = lower_bounds
+    by_mode["net_value_ci_high"] = upper_bounds
+    by_mode["decision"] = decisions
+    if not srm_ok:
+        srm["note"] = "SRM 检验未通过：分流比例异常，任何效应估计都不可信，已阻断上线建议"
     if simulated and "true_effect" in frame.columns:
         truth = frame.groupby("shipping_mode")["true_effect"].first()
         by_mode["true_effect"] = by_mode["shipping_mode"].map(truth)

@@ -121,12 +121,17 @@ def main() -> int:
     p_late = bundle["binary"].predict_proba(X_test)[:, 1]
     gain = pmf_gain(bundle, df_test, penalty, args.action_cost)
     rng = np.random.default_rng(args.seed)
+    # Qini 仍用 effect oracle；财务上界要按每单实际节省排序，而不是缩短天数。
+    oracle_net_gain = penalty * (
+        np.maximum(target[test], 0.0) - np.maximum(target[test] - effect_test, 0.0)
+    ) - args.action_cost
     scores = {
         "cate": cate,
         "p_late": p_late,
         "pmf_gain": gain,
         "random": rng.uniform(size=len(cate)),
         "oracle": effect_test,
+        "oracle_net_gain": oracle_net_gain,
     }
 
     curve = uplift.qini_curve(cate, effect_test)

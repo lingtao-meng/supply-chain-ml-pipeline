@@ -31,9 +31,10 @@
       "p_value": 0.0,
       "relative_reduction": 1.003000151934149,
       "break_even": 0.5,
+      "net_value_per_order": 79.64897405387019,
+      "net_value_ci_low": 77.83423107665182,
+      "net_value_ci_high": 81.46371703108856,
       "decision": "roll out",
-      "net_value_per_order": 100.0,
-      "net_value_upper_bound": 100.60003038682979,
       "true_effect": 0.0
     },
     {
@@ -48,9 +49,10 @@
       "p_value": 4.488065988508147e-06,
       "relative_reduction": NaN,
       "break_even": NaN,
-      "decision": "never pays",
-      "net_value_per_order": -100.0,
-      "net_value_upper_bound": -92.64926544084813,
+      "net_value_per_order": -116.71559303874123,
+      "net_value_ci_low": -118.40172463273511,
+      "net_value_ci_high": -115.02946144474735,
+      "decision": "do not roll out (negative net value)",
       "true_effect": 0.0
     },
     {
@@ -65,9 +67,10 @@
       "p_value": 1.0610814858733492e-172,
       "relative_reduction": 0.9719530027037864,
       "break_even": 0.63,
+      "net_value_per_order": 178.6359682789844,
+      "net_value_ci_low": 158.30644411817252,
+      "net_value_ci_high": 198.96549243979626,
       "decision": "roll out",
-      "net_value_per_order": 179.58419198091354,
-      "net_value_upper_bound": 295.9736533015226,
       "true_effect": 0.0
     },
     {
@@ -82,9 +85,10 @@
       "p_value": 4.958455548368483e-181,
       "relative_reduction": 87.17533920484829,
       "break_even": 1.5,
+      "net_value_per_order": 15.208303291704866,
+      "net_value_ci_low": 5.409145426423166,
+      "net_value_ci_high": 25.007461156986565,
       "decision": "roll out",
-      "net_value_per_order": 19.39999999999999,
-      "net_value_upper_bound": 301.00656034230207,
       "true_effect": 0.0
     }
   ],
