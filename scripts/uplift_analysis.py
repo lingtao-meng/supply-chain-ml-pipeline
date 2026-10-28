@@ -93,14 +93,15 @@ def main() -> int:
     # 编码器只在训练窗口拟合；否则测试期新类别会被提前看到。
     n = len(df)
     train_end = int(n * 0.70)
-    encoders = pipeline.fit_encoders(df.iloc[:train_end])
+    encoders = bundle.get("encoders") or pipeline.fit_encoders(df.iloc[:train_end])
     features, target = pipeline.build_features(df, encoders)
     split = pipeline.time_split(features, target)
 
     train = split.train_index
     test = split.test_index
-    X_train = split.X_train
-    X_test = split.X_test
+    # 必须用模型包自己的 scaler，不能拿 uplift 重新拟合的 split scaler。
+    X_train = bundle["scaler"].transform(features.iloc[train])
+    X_test = bundle["scaler"].transform(features.iloc[test])
     df_train = df.iloc[train]
     df_test = df.iloc[test]
 

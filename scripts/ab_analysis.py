@@ -85,6 +85,21 @@ def summarise(
                                  "break_even": break_even.get("all", float("nan"))}])
 
     srm_ok = bool(srm.get("ok", True))
+    if "shipping_mode" in frame.columns:
+        mode_srm = {}
+        for mode, chunk in frame.groupby("shipping_mode"):
+            n0 = int((chunk["treated"] == 0).sum())
+            n1 = int((chunk["treated"] == 1).sum())
+            mode_srm[mode] = experiment.srm_test(n0, n1)
+        by_mode["srm_p"] = by_mode["shipping_mode"].map(
+            {m: v["p_value"] for m, v in mode_srm.items()}
+        )
+        by_mode["srm_ok"] = by_mode["shipping_mode"].map(
+            {m: v["ok"] for m, v in mode_srm.items()}
+        )
+    else:
+        by_mode["srm_p"] = srm["p_value"]
+        by_mode["srm_ok"] = srm_ok
     # 直接比较每单实际成本：罚金按正延迟计，干预费只对处理组计。
     # 平均缩短天数不等于净收益，尤其当对照订单本来就不晚时。
     frame = frame.copy()
@@ -114,7 +129,7 @@ def summarise(
         net_values.append(float(cost_est.reduction))
         lower_bounds.append(float(cost_est.ci_low))
         upper_bounds.append(float(cost_est.ci_high))
-        if not srm_ok:
+        if not srm_ok or not bool(row.get("srm_ok", True)):
             decisions.append("hold (SRM anomaly)")
         elif mode == "all" and not np.isfinite(row["break_even"]):
             decisions.append("not evaluated (no break-even)")
