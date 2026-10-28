@@ -182,15 +182,38 @@ def build_features(
 
 
 def time_split(
-    X: pd.DataFrame, y: np.ndarray, train_frac: float = 0.70, valid_frac: float = 0.15
+    X: pd.DataFrame,
+    y: np.ndarray,
+    train_frac: float = 0.70,
+    valid_frac: float = 0.15,
+    train_mask: np.ndarray | None = None,
+    valid_mask: np.ndarray | None = None,
 ) -> SplitData:
-    """Chronological split — train on the past, test on the future."""
+    """Chronological split — train on the past, test on the future.
+
+    ``train_mask``/``valid_mask`` filter rows inside each time block (e.g. drop
+    labels whose shipment event is not observable at the next cutoff).  The
+    test block is never filtered.
+    """
     n = len(X)
     t_end = int(n * train_frac)
     v_end = int(n * (train_frac + valid_frac))
+    tr_idx = np.arange(t_end)
+    va_idx = np.arange(t_end, v_end)
+    te_idx = np.arange(v_end, n)
+    if train_mask is not None:
+        mask = np.asarray(train_mask, dtype=bool)
+        if len(mask) == n:
+            mask = mask[:t_end]
+        tr_idx = tr_idx[mask]
+    if valid_mask is not None:
+        mask = np.asarray(valid_mask, dtype=bool)
+        if len(mask) == n:
+            mask = mask[t_end:v_end]
+        va_idx = va_idx[mask]
 
-    X_tr, X_va, X_te = X.iloc[:t_end], X.iloc[t_end:v_end], X.iloc[v_end:]
-    y_tr, y_va, y_te = y[:t_end], y[t_end:v_end], y[v_end:]
+    X_tr, X_va, X_te = X.iloc[tr_idx], X.iloc[va_idx], X.iloc[te_idx]
+    y_tr, y_va, y_te = y[tr_idx], y[va_idx], y[te_idx]
 
     scaler = StandardScaler()
     X_tr_s = scaler.fit_transform(X_tr)
@@ -206,8 +229,8 @@ def time_split(
         y_test=y_te,
         scaler=scaler,
         feature_names=list(X.columns),
-        train_index=np.arange(t_end),
-        test_index=np.arange(v_end, n),
+        train_index=tr_idx,
+        test_index=te_idx,
     )
 
 

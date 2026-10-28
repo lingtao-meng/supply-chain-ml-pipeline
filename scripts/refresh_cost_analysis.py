@@ -104,7 +104,8 @@ def fit_or_load(split, args, data_fp: str):
 
     key = {
         "cache_version": CACHE_VERSION,
-        "unit": getattr(args, "unit", "line"),   # order 与 line 的训练矩阵不同，必须分开缓存
+        "unit": getattr(args, "unit", "line"),
+        "asof_purge": bool(getattr(args, "asof_purge", False)),   # order 与 line 的训练矩阵不同，必须分开缓存
         "data_fp": data_fp,
         "n_estimators": args.n_estimators,
         "pmf_iter": args.pmf_iter,
@@ -339,6 +340,11 @@ def main() -> int:
         default="order",
         help="costing unit: order (de-duplicated, default) or line (raw rows)",
     )
+    ap.add_argument(
+        "--asof-purge",
+        action="store_true",
+        help="drop train/valid labels whose shipment is not observable at the next cutoff",
+    )
     ap.add_argument("--outdir", default=str(ROOT / "results"))
     ap.add_argument("--images", default=str(ROOT / "images"))
     ap.add_argument("--bundle", default=str(BUNDLE), help="where to write the app model bundle")
@@ -372,7 +378,17 @@ def main() -> int:
     n_train_rows = int(len(df) * 0.70)
     encoders = pipeline.fit_encoders(df.iloc[:n_train_rows])
     X, y = pipeline.build_features(df, encoders)
-    split = pipeline.time_split(X, y)
+    train_mask = valid_mask = None
+    if args.asof_purge:
+        t_end = int(len(df) * 0.70)
+        v_end = int(len(df) * 0.85)
+        valid_start = df[pipeline.DATE_COL].iloc[t_end]
+        test_start = df[pipeline.DATE_COL].iloc[v_end]
+        train_mask = (df[pipeline.SHIP_COL] < valid_start).to_numpy()[:t_end]
+        valid_mask = (df[pipeline.SHIP_COL] < test_start).to_numpy()[t_end:v_end]
+        print(f"as-of purge: train keep {train_mask.sum():,}/{len(train_mask):,}, "
+              f"valid keep {valid_mask.sum():,}/{len(valid_mask):,}")
+    split = pipeline.time_split(X, y, train_mask=train_mask, valid_mask=valid_mask)
     print(f"train={len(split.y_train):,} valid={len(split.y_valid):,} test={len(split.y_test):,}")
     print(f"features={len(split.feature_names)}")
 
