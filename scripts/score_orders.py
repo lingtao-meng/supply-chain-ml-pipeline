@@ -44,6 +44,12 @@ def main() -> int:
 
     bundle = scoring.load_bundle(args.bundle)
     frame = pd.read_csv(args.input, encoding="latin1")
+    if "Order Id" in frame.columns and frame["Order Id"].duplicated().any():
+        n_dup = int(frame["Order Id"].duplicated().sum())
+        raise SystemExit(
+            f"input has {n_dup} duplicate Order Id rows; aggregate to one row per order first "
+            "(or pass an order-level file), otherwise intervention cost is charged per line"
+        )
     plan = scoring.score_frame(
         frame,
         bundle,

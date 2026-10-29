@@ -15,12 +15,12 @@
     },
     {
       "shipping_mode": "Second Class",
-      "expected_excess_days": 1.9952971701937892,
+      "expected_excess_days": 1.9983117613956105,
       "break_even_reduction": 0.63
     },
     {
       "shipping_mode": "Standard Class",
-      "expected_excess_days": 0.6003717472118959,
+      "expected_excess_days": 0.6003208517154629,
       "break_even_reduction": 1.51
     }
   ],
@@ -28,57 +28,57 @@
     {
       "assumed_reduction": 0.0,
       "true_reduction": 2.0,
-      "total_cost": 3440480.0,
-      "cost_per_order": 127.05812836989438,
-      "intervention_rate": 0.9438658689711205,
+      "total_cost": 1254240.0,
+      "cost_per_order": 127.16617661968975,
+      "intervention_rate": 0.9453513129879347,
       "express_rate": 0.0
     },
     {
       "assumed_reduction": 1.0,
       "true_reduction": 2.0,
-      "total_cost": 3275840.0,
-      "cost_per_order": 120.97791565108206,
-      "intervention_rate": 0.9438658689711205,
-      "express_rate": 0.152005317970308
+      "total_cost": 1193720.0,
+      "cost_per_order": 121.03011254182297,
+      "intervention_rate": 0.9453513129879347,
+      "express_rate": 0.15340160194666938
     },
     {
       "assumed_reduction": 2.0,
       "true_reduction": 2.0,
-      "total_cost": 3058600.0,
-      "cost_per_order": 112.95516655587562,
-      "intervention_rate": 0.9438658689711205,
-      "express_rate": 0.3512445527734692
+      "total_cost": 1115520.0,
+      "cost_per_order": 113.10149041873669,
+      "intervention_rate": 0.9453513129879347,
+      "express_rate": 0.34837270607320286
     },
     {
       "assumed_reduction": 3.0,
       "true_reduction": 2.0,
-      "total_cost": 3058600.0,
-      "cost_per_order": 112.95516655587562,
-      "intervention_rate": 0.9438658689711205,
-      "express_rate": 0.3512445527734692
+      "total_cost": 1115520.0,
+      "cost_per_order": 113.10149041873669,
+      "intervention_rate": 0.9453513129879347,
+      "express_rate": 0.34837270607320286
     },
     {
       "assumed_reduction": 4.0,
       "true_reduction": 2.0,
-      "total_cost": 3058600.0,
-      "cost_per_order": 112.95516655587562,
-      "intervention_rate": 0.9438658689711205,
-      "express_rate": 0.3512445527734692
+      "total_cost": 1115520.0,
+      "cost_per_order": 113.10149041873669,
+      "intervention_rate": 0.9453513129879347,
+      "express_rate": 0.34837270607320286
     }
   ],
-  "delay_sd": 1.495349614006494,
+  "delay_sd": 1.494146793648831,
   "sample_size": [
     {
       "effect_days": 0.1,
-      "orders_per_arm": 3511
+      "orders_per_arm": 3505
     },
     {
       "effect_days": 0.2,
-      "orders_per_arm": 878
+      "orders_per_arm": 877
     },
     {
       "effect_days": 0.3,
-      "orders_per_arm": 391
+      "orders_per_arm": 390
     },
     {
       "effect_days": 0.5,

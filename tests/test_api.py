@@ -94,3 +94,19 @@ class TestApi(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+@unittest.skipUnless(FASTAPI_AVAILABLE, "API extra not installed")
+class TestAmountBasis(unittest.TestCase):
+    def test_default_total_is_discounted_net(self):
+        from api.main import Order, orders_to_frame
+
+        order = Order(
+            type="DEBIT", category_name="Fishing", department_name="Fan Shop",
+            market="Europe", shipping_mode="Same Day", customer_segment="Consumer",
+            order_date="2017-12-15", scheduled_days=0, quantity=2,
+            unit_price=120.0, discount_rate=0.05,
+        )
+        frame = orders_to_frame([order])
+        self.assertAlmostEqual(float(frame.loc[0, "Order Item Total"]), 2 * 120.0 * 0.95, places=2)
+        self.assertAlmostEqual(float(frame.loc[0, "Order Item Product Price"]), 120.0)

@@ -106,7 +106,7 @@ def main() -> int:
     outdir.mkdir(parents=True, exist_ok=True)
     images.mkdir(parents=True, exist_ok=True)
 
-    df = pipeline.load_orders(str(pipeline.find_data(args.data)))
+    df = pipeline.to_order_level(pipeline.load_orders(str(pipeline.find_data(args.data))))
     from src import scoring
 
     bundle = scoring.load_bundle()

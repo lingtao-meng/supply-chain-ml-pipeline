@@ -1,5 +1,5 @@
 shipping_mode,expected_excess_days,break_even_reduction
 First Class,1.0,0.5
 Same Day,0.0,
-Second Class,1.9952971701937892,0.63
-Standard Class,0.6003717472118959,1.51
+Second Class,1.9983117613956105,0.63
+Standard Class,0.6003208517154629,1.51
