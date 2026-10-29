@@ -81,7 +81,7 @@ def code_fingerprint() -> str:
     on the old features — the exact foot-gun the v1 cache had.
     """
     digest = hashlib.sha1()
-    for rel in ("src/pipeline.py", "src/policy.py"):
+    for rel in ("src/pipeline.py", "src/policy.py", "scripts/refresh_cost_analysis.py"):
         digest.update((ROOT / rel).read_bytes())
     return digest.hexdigest()[:12]
 

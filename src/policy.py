@@ -158,9 +158,9 @@ def policy_budget(
     """Greedy budget-constrained allocation.
 
     Rank every (order, action) pair by expected net benefit per dollar spent,
-    then take pairs in that order while the budget lasts.  This is the LP
-    relaxation of the 0/1 knapsack, so it is a valid upper bound for the
-    integer allocation and a realistic planner heuristic.
+    then take pairs in that order while the budget lasts.  This is a greedy
+    heuristic, not the LP relaxation and not a valid upper bound for the
+    integer allocation.
     """
     exp_cost = expected_cost_per_action(draws, penalty, actions)  # (n, k)
     base = exp_cost[:, IDX_NONE]
@@ -215,7 +215,7 @@ def policy_capacity(
     best_action = exp_cost.argmin(axis=1)
     gain = base - exp_cost.min(axis=1)
 
-    k = int(round(capacity * len(draws)))
+    k = int(np.floor(capacity * len(draws)))
     order = np.argsort(-gain)[:k]
     out = np.full(len(draws), IDX_NONE, dtype=int)
     keep = order[gain[order] > 0]
@@ -311,7 +311,7 @@ def policy_capacity_pmf(
     exp_cost = expected_cost_from_pmf(pmf, penalty, atoms, actions)
     gain = exp_cost[:, IDX_NONE] - exp_cost.min(axis=1)
     best_action = exp_cost.argmin(axis=1)
-    k = int(round(capacity * len(pmf)))
+    k = int(np.floor(capacity * len(pmf)))
     order = np.argsort(-gain)[:k]
     out = np.full(len(pmf), IDX_NONE, dtype=int)
     keep = order[gain[order] > 0]

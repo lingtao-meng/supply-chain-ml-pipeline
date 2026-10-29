@@ -64,7 +64,7 @@ class Order(BaseModel):
     quantity: int = Field(ge=1)
     unit_price: float = Field(ge=0)
     discount_rate: float = Field(ge=0, le=1)
-    order_total: Optional[float] = Field(default=None, ge=0)
+    order_total: Optional[float] = Field(default=None, ge=0, description="discounted net total; defaults to quantity*unit_price*(1-discount_rate)")
 
 
 class ScoreRequest(BaseModel):

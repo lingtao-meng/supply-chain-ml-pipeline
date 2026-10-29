@@ -78,7 +78,7 @@
     "quantile grid (3 points)": 1203520.0,
     "all express": 1217100.0,
     "binary: p50 > 0 (legacy)": 1261600.0,
-    "capacity 25% (best-first)": 1377000.0,
+    "capacity 25% (best-first)": 1377100.0,
     "none (do nothing)": 1779600.0
   },
   "params": {
