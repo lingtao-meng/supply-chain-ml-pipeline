@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
+> **项目定位**：基于公开数据的离线分析与方法验证，不是企业上线系统。验收看数据口径、时间切分、比较基准、计算结果和报告表述；HTTP API、Streamlit、Docker、批量上传属于可选工程，不作为项目完成门槛。
+
 这是我在 DataCo 的 18 万条订单明细上做的一个项目。一开始想得很简单：预测哪些订单会晚，然后给高风险的订单加急。做着做着发现，模型能学到的东西比我预期少，而“值不值得加急”比“会不会晚”更影响结果。
 
 仓库最后分成两块：预测层做 P10/P50/P90、迟到二分类和 7 类离散分布；决策层把动作、成本、预算和产能放进同一个函数里算。
@@ -49,7 +51,7 @@ flowchart LR
 > 已完成订单口径重算：`summary.md` / `policy_comparison.csv` / `capacity_curve.csv` / `budget_curve.csv`。
 > **口径**：`pacing.csv` 仍是行口径；`ab_*.csv` / `uplift*.csv` 已按订单口径重跑。
 
-1. **0.78 的 AUC 不是模型没调好。** 只用运输方式查表就有 0.7784，18 个特征的模型是 0.7795（差 +0.0011）；把方式拆开看，方式内部 AUC 只有 0.50 左右，卡方检验也查不出残余关联（Standard Class 内部 Market p=0.994、Category p=1.000、Segment p=0.718）。延迟是方式内部均匀随机的，0.78 就是这份数据的信息上限。
+1. **0.78 的 AUC 不是模型没调好。** 只用运输方式查表就有 0.7784，18 个特征的模型是 0.7795（差 +0.0011）；把方式拆开看，方式内部 AUC 只有 0.50 左右，卡方检验也查不出残余关联（Standard Class 内部 Market p=0.994、Category p=1.000、Segment p=0.718）。这份数据的延迟在方式内部近似均匀生成，所以 0.78 更像当前特征下的上限，而不是调参问题；它不能证明所有可能特征的理论上限。
 2. **延迟只有 -2 到 4 七个整数。** 用 P10/P50/P90 三个点去拼分布，会把一条平坦的分布拉成连续直线。同样的测试集，三点插值 $1.2035M，直接建 7 类分布 $1.1303M，差了 6.1%。
 3. **我原来写“分位数回归比二分类好 34%”，这个结论站不住。** 旧基线是 `p50>0` 就加急，在 $100 加急成本下约等于全量加急。给二分类同样的期望成本决策层，成本是 $1.1281M，和 7 类 pmf 只差 1.1%。
 4. **决定成本的主要不是模型，是决策规则和成本参数。** 同一批订单，11 个策略从 $0.771M 到 $1.780M；罚金从 $100 改到 $400，加急比例能从 0% 跳到 94%。
@@ -107,7 +109,7 @@ DataCo Supply Chain Dataset（Kaggle 公开数据）。180,519 行订单明细�
 
 > 全部结果都是当前订单口径；逐项数字以 `results/summary.md` 和 `results/*.csv/json` 为准。
 
-## 结果 1：0.78 是信息天花板
+## 结果 1：0.78 是当前特征下的信号上限
 
 ![signal ceiling](images/signal_ceiling.png)
 
@@ -117,9 +119,9 @@ DataCo Supply Chain Dataset（Kaggle 公开数据）。180,519 行订单明细�
 
 原因很直接：这个数据集的运输天数在每个运输方式内部近似**均匀随机生成**——
 Standard Class 的延迟在 −2..2 各占约 20%，Second Class 在 0..4 各占约 20%。
-0.78 不是模型失败，是运输方式已经把能解释的都解释完了。
+在当前特征和时间切分下，没有观察到稳定的额外信号；这不是理论信息上限的证明，只能说明继续堆这组特征没有明显收益。
 
-> **这条诊断比多 0.01 AUC 更有用**：它说明继续做特征工程是在拟合噪声，
+> **这条诊断比多 0.01 AUC 更有用**：它说明在这组特征上继续做特征工程大概率是在拟合噪声，
 > 也解释了为什么 SHAP 里 `Shipping Mode` 的贡献是第二名的 50 倍。
 
 ---
@@ -225,6 +227,8 @@ Second/Standard 的低价值订单——它们“容易晚”，但加急对它�
 
 ## 三个入口：脚本 / HTTP / UI
 
+> 以下为可选工程，不参与离线分析验收；分析结论只看脚本和 `results/`。
+
 | 入口 | 命令 | 适合 |
 |---|---|---|
 | 批量 CLI | `python scripts/score_orders.py --input orders.csv --out plan.csv --budget 500000` | 离线跑批 |
@@ -262,7 +266,7 @@ pip install -r requirements-service.txt   # 只有跑 HTTP API / Docker 时需�
 
 make data        # 或手动放 data/DataCoSupplyChainDataset.csv
 make reproduce   # 全部数字：results/ + images/ + models/model_bundle.joblib
-make test        # 108 个单测，不需要数据集
+make test        # 109 个单测，不需要数据集
 make smoke       # 合成数据端到端（CI 同款）
 make drift       # 月度 PSI 漂移报告
 make app         # Streamlit 演示（单笔 + 批量）
@@ -304,7 +308,7 @@ scripts/uplift_analysis.py         异质效应与定向干预
 api/main.py                        FastAPI /score 服务
 Dockerfile                         容器镜像
 app/app.py                         Streamlit：输入订单 → 分布 → 期望成本 → 动作
-tests/                             108 个单测 + 合成数据夹具（CI 用）
+tests/                             109 个单测 + 合成数据夹具（CI 用）
 notebooks/                         探索过程（成本口径已统一到 src/policy.py）
 results/                           summary.md、policy_comparison.csv、bootstrap.csv、budget_curve.csv、drift_report.csv…
 images/                            13 张由脚本生成的图 + notebook 探索图
