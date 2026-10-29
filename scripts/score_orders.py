@@ -15,7 +15,9 @@ The input must be DataCo-shaped (the columns listed in
 quantiles, P(late), the expected cost of each action and the recommended one.
 
 ``--budget`` allocates a fixed intervention budget with the same incremental
-greedy rule as ``src.policy.policy_budget_pmf``.
+greedy rule as ``src.policy.policy_budget_pmf``.  The input must be one row per
+order; duplicate ``Order Id`` values are rejected so express fees are not
+charged per line.
 """
 
 from __future__ import annotations

@@ -67,7 +67,7 @@ jobs:
         run: |
           python - <<'PY'
           import pandas as pd
-          df = pd.read_csv("/tmp/dataco_small.csv", nrows=80)
+          df = pd.read_csv("/tmp/dataco_small.csv").drop_duplicates("Order Id").head(80)
           df.to_csv("/tmp/orders_sample.csv", index=False)
           PY
           python scripts/score_orders.py --input /tmp/orders_sample.csv --out /tmp/decisions.csv --budget 2000
