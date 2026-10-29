@@ -94,9 +94,10 @@ class ScoreResponse(BaseModel):
 def orders_to_frame(orders: list[Order]) -> pd.DataFrame:
     rows = []
     for order in orders:
+        # Training uses a discounted net total; keep the API on the same basis.
         total = order.order_total
         if total is None:
-            total = order.quantity * order.unit_price
+            total = order.quantity * order.unit_price * (1.0 - order.discount_rate)
         rows.append(
             {
                 "Type": order.type,
