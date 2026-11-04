@@ -37,6 +37,8 @@ jobs:
           pip install -q numpy pandas scikit-learn scipy joblib
       - name: Unit tests
         run: python -m unittest discover -s tests -v
+      - name: Saved analysis and report consistency
+        run: python scripts/verify_results.py
 
   e2e:
     runs-on: ubuntu-latest

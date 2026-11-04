@@ -1,6 +1,6 @@
 PY ?= python
 
-.PHONY: help all data reproduce fast test lint app smoke clean pacing intervention monitor ab api
+.PHONY: help all data reproduce fast test lint app smoke clean pacing intervention monitor ab api verify report
 
 help:
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*##/ —/'
@@ -19,6 +19,12 @@ fast:  ## same pipeline with tiny models (~30 s), for a quick check
 
 test:  ## unit tests (no dataset needed)
 	$(PY) -m unittest discover -s tests -v
+
+verify:  ## check saved result tables and published summaries without training
+	$(PY) scripts/verify_results.py
+
+report:  ## update the result summary after regenerating analysis outputs
+	$(PY) scripts/verify_results.py --write
 
 lint:  ## ruff + byte-compile
 	$(PY) -m ruff check . || ruff check .
