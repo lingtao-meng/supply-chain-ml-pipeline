@@ -20,7 +20,10 @@ class SavedResultsTests(unittest.TestCase):
     def test_changed_per_order_cost_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for name in ("results/diagnostics.json", "results/policy_comparison.csv", "results/mode_table.csv", "results_asof/diagnostics.json"):
+            for name in (
+                "results/diagnostics.json", "results/policy_comparison.csv",
+                "results/mode_table.csv", "results_asof/diagnostics.json", *verify.PACING_FILES,
+            ):
                 dest = root / name
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / name, dest)
@@ -35,6 +38,25 @@ class SavedResultsTests(unittest.TestCase):
                 writer.writerows(rows)
             with self.assertRaisesRegex(ValueError, "cost per order"):
                 verify.build(root)
+
+    def test_pacing_budget_balance_is_checked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in verify.PACING_FILES:
+                dest = root / name
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / name, dest)
+            path = root / "results/pacing_by_period.csv"
+            with path.open(newline="") as f:
+                reader = csv.DictReader(f)
+                fields, rows = reader.fieldnames, list(reader)
+            rows[0]["closing_balance"] = str(float(rows[0]["closing_balance"]) + 100)
+            with path.open("w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(rows)
+            with self.assertRaisesRegex(ValueError, "closing balance"):
+                verify.pacing_report(root, 65752, 9863)
 
     def test_nonfinite_cost_is_rejected(self):
         with self.assertRaises(ValueError):

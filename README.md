@@ -17,6 +17,10 @@
 完整策略表、默认与严格 as-of 口径、输入文件指纹见 [结果核对表](docs/RESULTS.md)。
 第一次阅读可从 [一笔公开数据样本的完整分析](docs/WALKTHROUGH.md) 开始。
 
+![四档预算下，多覆盖一笔高优先级订单的成本分界](images/priority_tradeoff.png)
+
+20 万美元预算下，按历史阈值优先干预能多覆盖 399 单，模拟成本多 14,520 美元。到 40 万美元档，这套规则已经覆盖全部高优先级订单，还有 56,400 美元未使用；按日释放的策略仍能把资金用于其他订单。不同预算对应不同的取舍。[逐日账与分界计算](docs/ARRIVAL_PACING.md)
+
 ## 数据与问题
 
 - 数据：DataCo Supply Chain Dataset，180,519行明细、65,752个订单、54个原始字段。
@@ -82,6 +86,10 @@ make reproduce
 python scripts/refresh_cost_analysis.py --asof-purge --no-cache \
   --outdir results_asof --images images_asof --bundle models/model_bundle_asof.joblib
 
+# 按订单重放分期预算，不依赖预训练模型包
+make pacing
+make arrival-pacing
+
 # 核对已保存结果，更新结果说明
 python scripts/verify_results.py --write
 python scripts/verify_results.py
@@ -96,7 +104,8 @@ make test
 |---|---|---|
 | 成本、预算、容量、稳健性与bootstrap | `scripts/refresh_cost_analysis.py` | 公开订单标签与设定动作效果下的离线比较 |
 | 回本点与样本量 | `scripts/intervention_analysis.py` | 给定效果和费用的情景计算 |
-| 多期预算节奏 | `scripts/pacing_simulation.py` | 简化模拟，当前产物仍为行口径 |
+| 逐单到达与预算消耗 | `scripts/arrival_pacing.py` | [逐单回放](docs/ARRIVAL_PACING.md)，比较先到先处理、历史门槛与每日释放额度 |
+| 多期预算节奏 | `scripts/pacing_simulation.py` | [订单级预算回放](docs/RESULTS.md#多期预算回放)，比较全期、按月和按周结转 |
 | A/B与SRM | `scripts/ab_analysis.py` | 默认使用模拟分组与效果，按净成本区间作判断 |
 | T-learner、Qini/AUUC与净收益排序 | `scripts/uplift_analysis.py` | 模拟异质效应，不当作DataCo已识别的因果效果 |
 | CLI/API/Streamlit | `src/scoring.py`、`app/`、`api/` | 共享预处理与决策逻辑的可选演示 |

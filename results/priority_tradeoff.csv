@@ -1,0 +1,9 @@
+budget,strategy,cost,missed_priority,lower_inclusive,upper_inclusive
+100000,historical threshold,1639000,2436,4560/41,
+100000,daily pacing,1620760,2600,0,4560/41
+200000,historical threshold,1491800,1436,4840/133,
+200000,daily pacing,1477280,1835,0,4840/133
+300000,historical threshold,1343400,436,9560/681,
+300000,daily pacing,1333840,1117,0,9560/681
+400000,historical threshold,1280000,0,83480/399,
+400000,daily pacing,1196520,399,0,83480/399

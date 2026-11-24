@@ -106,8 +106,14 @@ jobs:
           test $code -le 1
           test -f /tmp/monitor.json
           python scripts/pacing_simulation.py --data /tmp/dataco_small.csv --outdir /tmp/results --images /tmp/images
+          python scripts/arrival_pacing.py --data /tmp/dataco_small.csv --start 2016-01-01 --end 2017-11-30 --outdir /tmp/results
+          test -f /tmp/results/arrival_pacing.csv
+          test -f /tmp/results/arrival_pacing_by_day.csv
+          test -f /tmp/results/arrival_pacing_metadata.json
           python scripts/intervention_analysis.py --data /tmp/dataco_small.csv --outdir /tmp/results --images /tmp/images
           test -f /tmp/results/pacing.csv
+          test -f /tmp/results/pacing_by_period.csv
+          test -f /tmp/results/pacing_metadata.json
           test -f /tmp/results/intervention_summary.json
           python scripts/ab_analysis.py --outdir /tmp/results --images /tmp/images --n-per-arm 500
           test -f /tmp/results/ab_analysis.json

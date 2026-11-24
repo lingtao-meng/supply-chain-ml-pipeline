@@ -1,0 +1,12 @@
+{
+  "source_sha256": "fa6d022ed437155e1a2f0378710602848703c8a7f203f7ff5d77805bf8480aa6",
+  "source_orders": 65752,
+  "original_train_orders": 46026,
+  "train_orders_with_available_labels": 45820,
+  "label_cutoff_exclusive": "2017-03-16T19:43:00",
+  "test_period_start": "2017-09-05T12:59:00",
+  "test_period_end": "2018-01-31T23:38:00",
+  "test_orders": 9863,
+  "late_orders": 5406,
+  "period_penalty_per_day": 200.0
+}

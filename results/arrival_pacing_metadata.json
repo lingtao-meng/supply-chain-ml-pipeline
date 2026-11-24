@@ -1,0 +1,12 @@
+{
+  "source_sha256": "fa6d022ed437155e1a2f0378710602848703c8a7f203f7ff5d77805bf8480aa6",
+  "train_orders": 45820,
+  "test_orders": 9863,
+  "train_label_cutoff_exclusive": "2017-03-16T19:43:00",
+  "calendar_start": "2017-09-05",
+  "calendar_end": "2018-01-31",
+  "priority_train_quantile": 0.75,
+  "priority_expected_gain_threshold": 100.0,
+  "priority_test_orders": 3436,
+  "penalty_per_day": 200.0
+}
