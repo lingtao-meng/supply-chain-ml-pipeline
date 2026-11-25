@@ -30,7 +30,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-
+from figure_style import format_figure  # noqa: E402
 from src import experiment, policy, scoring  # noqa: E402
 
 DEFAULT_EFFECTS = {
@@ -173,9 +173,9 @@ def plot(by_mode: pd.DataFrame, images: Path) -> None:
     view = by_mode.sort_values("break_even", na_position="first")
     y = np.arange(len(view))
     colors = {
-        "roll out": "#1f6f78",
-        "inconclusive": "#d99a2b",
-        "do not roll out": "#9b3b3b",
+        "roll out": "#315b78",
+        "inconclusive": "#a1774b",
+        "do not roll out": "#7c4642",
         "never pays": "#7c8a99",
     }
 
@@ -191,13 +191,13 @@ def plot(by_mode: pd.DataFrame, images: Path) -> None:
             capsize=3,
         )
         if np.isfinite(row["break_even"]):
-            ax.plot(row["break_even"], i, marker="|", color="#9b3b3b", markersize=14)
-    ax.axvline(0, color="#c9ced6", linewidth=1)
+            ax.plot(row["break_even"], i, marker="|", color="#7c4642", markersize=14)
+    ax.axvline(0, color="#bac2c6", linewidth=1)
     ax.set_yticks(y, view["shipping_mode"])
     ax.set_xlabel("delay reduction (days), 95% CI")
     ax.set_title("Effect vs break-even (red tick)")
     ax.legend(
-        handles=[plt.Line2D([], [], marker="|", color="#9b3b3b", linestyle="", markersize=12,
+        handles=[plt.Line2D([], [], marker="|", color="#7c4642", linestyle="", markersize=12,
                             label="break-even")],
         fontsize=8,
         loc="lower right",
@@ -211,7 +211,8 @@ def plot(by_mode: pd.DataFrame, images: Path) -> None:
     ax2.set_xlabel("net value per treated order (USD)")
     ax2.set_title("Value at the point estimate")
     fig.tight_layout()
-    fig.savefig(images / "ab_analysis.png", dpi=150)
+    format_figure(fig)
+    fig.savefig(images / "ab_analysis.png", dpi=260)
     plt.close(fig)
 
 

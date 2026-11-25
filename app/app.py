@@ -23,6 +23,9 @@ from pathlib import Path
 
 import matplotlib
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from figure_style import format_figure  # noqa: E402
+
 matplotlib.use("Agg")  # headless: the app must render on servers and in CI
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -157,7 +160,7 @@ def render_single(bundle: dict, metrics: dict, enc: dict) -> None:
         st.subheader("预测的延迟分布")
         fig, ax = plt.subplots(figsize=(7, 3.2))
         atoms = bundle["atoms"]
-        bars = ax.bar(atoms, pmf, color="#1f6f78", width=0.65)
+        bars = ax.bar(atoms, pmf, color="#315b78", width=0.65)
         for b, p in zip(bars, pmf):  # noqa: B905 (py3.9 compat)
             if p > 0.02:
                 ax.text(b.get_x() + b.get_width() / 2, p + 0.01, f"{p:.0%}", ha="center", fontsize=8)
@@ -165,9 +168,10 @@ def render_single(bundle: dict, metrics: dict, enc: dict) -> None:
         ax.set_ylabel("probability")
         ax.set_xticks(atoms)
         ax.set_ylim(0, max(0.35, pmf.max() * 1.2))
-        ax.axvline(0, color="#9b3b3b", linestyle="--", linewidth=1)
+        ax.axvline(0, color="#7c4642", linestyle="--", linewidth=1)
         ax.set_title("predicted delay distribution (right of dashed line = late)")
         fig.tight_layout()
+        format_figure(fig)
         st.pyplot(fig)
         st.caption(
             f"分布来源：{'7 分类模型' if use_model else '运输方式历史频率'} · "

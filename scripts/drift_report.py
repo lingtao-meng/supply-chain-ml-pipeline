@@ -28,7 +28,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-
+from figure_style import format_figure  # noqa: E402
 from src import monitoring, pipeline  # noqa: E402
 
 CATEGORICAL = monitoring.DEFAULT_CATEGORICAL
@@ -146,18 +146,19 @@ def main() -> int:
             mean_delay=("delay_days", "mean"),
         )
         ax2 = fig.add_subplot(grid[1, 0])
-        ax2.plot(range(len(monthly)), monthly["late_rate"], color="#1f6f78", marker="o", markersize=3)
+        ax2.plot(range(len(monthly)), monthly["late_rate"], color="#315b78", marker="o", markersize=3)
         ax2.set_xticks(range(0, len(monthly), 6), monthly.index[::6], rotation=45, ha="right")
         ax2.set_ylim(0.4, 0.7)
         ax2.set_title("Late rate by month (concept behaviour)")
         ax2.set_ylabel("late rate")
 
         ax3 = fig.add_subplot(grid[1, 1])
-        ax3.plot(range(len(monthly)), monthly["mean_delay"], color="#9b3b3b", marker="o", markersize=3)
+        ax3.plot(range(len(monthly)), monthly["mean_delay"], color="#7c4642", marker="o", markersize=3)
         ax3.set_xticks(range(0, len(monthly), 6), monthly.index[::6], rotation=45, ha="right")
         ax3.set_title("Mean delay by month")
         ax3.set_ylabel("days")
-        fig.savefig(images / "drift.png", dpi=150, bbox_inches="tight")
+        format_figure(fig)
+        fig.savefig(images / "drift.png", dpi=260, bbox_inches="tight")
         plt.close(fig)
         print(f"wrote {images / 'drift.png'}")
     except Exception as exc:  # pragma: no cover - optional chart

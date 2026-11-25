@@ -29,7 +29,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-
+from figure_style import format_figure  # noqa: E402
 from src import pipeline, policy, scoring, uplift  # noqa: E402
 
 
@@ -185,17 +185,17 @@ def main() -> int:
         import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(1, 2, figsize=(11.5, 3.8))
-        axes[0].plot(curve["fraction"], curve["qini"], color="#1f6f78", label="CATE ranking")
-        axes[0].plot(curve["fraction"], curve["perfect"], color="#9b3b3b", linestyle="--",
+        axes[0].plot(curve["fraction"], curve["qini"], color="#315b78", label="CATE ranking")
+        axes[0].plot(curve["fraction"], curve["perfect"], color="#7c4642", linestyle="--",
                      label="perfect")
-        axes[0].axhline(0, color="#c9ced6", linewidth=1, label="random")
+        axes[0].axhline(0, color="#bac2c6", linewidth=1, label="random")
         axes[0].set_xlabel("fraction of orders treated")
         axes[0].set_ylabel("cumulative uplift (days)")
         axes[0].set_title(f"Qini curve — AUUC {qini_auc:.2f}")
         axes[0].legend(fontsize=8)
 
-        colors = {"cate": "#1f6f78", "p_late": "#d99a2b", "pmf_gain": "#9b3b3b",
-                  "random": "#c9ced6", "oracle": "#2f5d8c"}
+        colors = {"cate": "#315b78", "p_late": "#a1774b", "pmf_gain": "#7c4642",
+                  "random": "#bac2c6", "oracle": "#627d92"}
         for name, group in targeting_df.groupby("score"):
             axes[1].plot(group["fraction"] * 100, group["net_saving"] / 1e3,
                           marker="o", markersize=3, label=name, color=colors.get(name))
@@ -205,7 +205,8 @@ def main() -> int:
         axes[1].set_title("Value of targeting (true effects)")
         axes[1].legend(fontsize=7)
         fig.tight_layout()
-        fig.savefig(images / "uplift.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images / "uplift.png", dpi=260)
         plt.close(fig)
         print(f"wrote {images / 'uplift.png'}")
     except Exception as exc:  # pragma: no cover - optional chart

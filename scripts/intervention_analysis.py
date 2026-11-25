@@ -30,7 +30,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-
+from figure_style import format_figure  # noqa: E402
 from src import pipeline, policy  # noqa: E402
 
 PENALTY = 200.0
@@ -183,21 +183,22 @@ def main() -> int:
         import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
-        axes[0].plot(miss["assumed_reduction"], miss["total_cost"] / 1e3, marker="o", color="#1f6f78")
-        axes[0].axvline(TRUE_REDUCTION, color="#9b3b3b", linestyle="--", linewidth=1,
+        axes[0].plot(miss["assumed_reduction"], miss["total_cost"] / 1e3, marker="o", color="#315b78")
+        axes[0].axvline(TRUE_REDUCTION, color="#7c4642", linestyle="--", linewidth=1,
                         label="true effect (2d)")
         axes[0].set_xlabel("assumed express reduction (days)")
         axes[0].set_ylabel("total cost (USD k)")
         axes[0].set_title("Cost of assuming the wrong intervention effect")
         axes[0].legend(fontsize=8)
 
-        axes[1].plot(power["effect_days"], power["orders_per_arm"], marker="o", color="#d99a2b")
+        axes[1].plot(power["effect_days"], power["orders_per_arm"], marker="o", color="#a1774b")
         axes[1].set_yscale("log")
         axes[1].set_xlabel("delay reduction to detect (days)")
         axes[1].set_ylabel("orders per arm (log)")
         axes[1].set_title("A/B sample size (80% power, alpha 0.05)")
         fig.tight_layout()
-        fig.savefig(images / "intervention.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images / "intervention.png", dpi=260)
         plt.close(fig)
         print(f"wrote {images / 'intervention.png'}")
     except Exception as exc:  # pragma: no cover - optional chart

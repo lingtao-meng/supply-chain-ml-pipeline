@@ -21,7 +21,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-
+from figure_style import format_figure  # noqa: E402
 from src import pipeline, policy  # noqa: E402
 
 BUDGETS = (100_000, 200_000, 300_000, 400_000)
@@ -213,6 +213,8 @@ def main() -> int:
         import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(1, 2, figsize=(11, 4.1), layout="constrained")
+        for axis in axes:
+            axis.set_prop_cycle(color=["#355d78", "#986c4e", "#525553", "#7a8797"])
         finite = table[np.isfinite(table["total_budget"])]
         no_carry = finite[finite["strategy"] == "monthly (no carry-over)"].set_index("total_budget")
         markers = ("s", "o", "^", "D")
@@ -229,7 +231,8 @@ def main() -> int:
         axes[0].legend(fontsize=8)
         axes[1].set_ylabel("Unspent budget (USD k)")
         axes[1].set_title("Unused action budget")
-        fig.savefig(images / "pacing.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images / "pacing.png", dpi=260)
         plt.close(fig)
         print(f"wrote {images / 'pacing.png'}")
     except Exception as exc:  # pragma: no cover - optional chart

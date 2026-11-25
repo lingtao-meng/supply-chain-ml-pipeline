@@ -1,83 +1,45 @@
-"""Plot the preferred strategy and its switch point at each action budget."""
+"""Incremental coverage, cost and break-even value on the held-out period."""
 
-from fractions import Fraction
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib import font_manager
-from matplotlib.lines import Line2D
 
 ROOT = Path(__file__).resolve().parents[1]
-INK, GRAY = "#1b2c38", "#4e606d"
-BLUE, ORANGE = "#236b8e", "#a64b30"
-
-
-
-def configure_style():
-    installed = {font.name for font in font_manager.fontManager.ttflist}
-    candidates = ("Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", "STHeiti", "PingFang HK")
-    family = next((name for name in candidates if name in installed), None)
-    if family is None:
-        raise RuntimeError("Install Noto Sans CJK SC to render the Chinese labels")
-    plt.rcParams.update({
-        "font.family": family, "font.size": 11, "text.color": INK,
-        "axes.labelcolor": INK, "axes.edgecolor": "#aebac2", "axes.linewidth": .75,
-        "axes.spines.top": False, "axes.spines.right": False,
-        "xtick.color": GRAY, "ytick.color": GRAY, "axes.unicode_minus": False,
-        "figure.facecolor": "white", "savefig.facecolor": "white",
-        "legend.frameon": False, "grid.color": "#e5eaee", "grid.linewidth": .7,
-    })
+sys.path.insert(0, str(ROOT))
+from figure_style import format_figure  # noqa: E402
 
 
 def main():
-    configure_style()
-    table = pd.read_csv(ROOT / "results/priority_tradeoff.csv")
-    historical = table[table.strategy == "historical threshold"].set_index("budget").sort_index()
-    daily = table[table.strategy == "daily pacing"].set_index("budget").loc[historical.index]
-    cutoff = historical.lower_inclusive.map(lambda value: float(Fraction(value)))
-    additional_orders = daily.missed_priority - historical.missed_priority
-    additional_cost = historical.cost - daily.cost
-
-    right_edge = 250
-    fig = plt.figure(figsize=(9.4, 4.0))
-    grid = fig.add_gridspec(1, 2, width_ratios=(5.1, 2.3), left=.12, right=.97,
-                           bottom=.20, top=.79, wspace=.22)
-    chart = fig.add_subplot(grid[0])
-    ledger = fig.add_subplot(grid[1], sharey=chart)
-    for row, budget in enumerate(cutoff.index):
-        y = len(cutoff) - row - 1
-        switch = cutoff[budget]
-        chart.hlines(y, 0, switch, color=BLUE, linewidth=7)
-        chart.hlines(y, switch, right_edge, color=ORANGE, linewidth=7)
-        chart.scatter(switch, y, s=40, edgecolor=INK, facecolor="white", linewidth=1.15, zorder=4)
-        chart.annotate(f"{switch:.2f}", (switch, y), xytext=(0, 8),
-                       textcoords="offset points", ha="center", va="bottom")
-        ledger.text(.31, y, f"+{additional_orders[budget]:,}", ha="right", va="center")
-        ledger.text(.98, y, f"+{additional_cost[budget]:,.0f}", ha="right", va="center")
-        ledger.axhline(y-.42, color="#e5eaee", linewidth=.65)
-    chart.set(xlim=(0, right_edge), ylim=(-.48, len(cutoff)-.43), xticks=range(0, 251, 50),
-              yticks=range(len(cutoff)), yticklabels=[str(b//10000) for b in cutoff.index[::-1]],
-              xlabel="每多保障一单的额外估值（美元/单）", ylabel="预算（万美元）")
-    chart.set_axisbelow(True)
-    chart.grid(axis="x")
-    chart.spines["left"].set_visible(False)
-    chart.tick_params(axis="y", length=0, pad=8)
-    ledger.set_axis_off()
-    ledger.set_xlim(0, 1)
-    ledger.text(.98, 1.08, "历史阈值较按日释放", transform=ledger.transAxes,
-                ha="right", va="center", color=INK, fontsize=11)
-    for x, label in ((.31, "多覆盖（单）"), (.98, "额外成本（美元）")):
-        ledger.text(x, 1.0, label, transform=ledger.transAxes,
-                    ha="right", va="center", color=GRAY, fontsize=10)
-    handles = [
-        Line2D([], [], color=BLUE, linewidth=4, label="按日释放预算"),
-        Line2D([], [], color=ORANGE, linewidth=4, label="按历史阈值干预"),
-        Line2D([], [], color=INK, marker="o", markerfacecolor="white", ls="", label="策略分界"),
-    ]
-    fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(.119, .98),
-               ncol=3, borderaxespad=0, fontsize=10)
-    fig.savefig(ROOT / "images/priority_tradeoff.png", dpi=210)
+    records = pd.read_csv(ROOT / "results/priority_tradeoff.csv")
+    by_policy = records.pivot(index="budget", columns="strategy", values=["cost", "missed_priority"])
+    cost = by_policy["cost"]["historical threshold"] - by_policy["cost"]["daily pacing"]
+    orders = by_policy["missed_priority"]["daily pacing"] - by_policy["missed_priority"]["historical threshold"]
+    fig, (left, right) = plt.subplots(1, 2, figsize=(8.3, 3.45), layout="constrained")
+    for budget, extra in orders.items():
+        dollars = cost.loc[budget]
+        left.plot([0, extra], [0, dollars / 1000], lw=.85, color="#a4adb3")
+        left.plot(extra, dollars / 1000, "o", color="#244e68", ms=4)
+        left.annotate(f"{budget // 10000} 万", (extra, dollars / 1000),
+                      xytext=(2, 6), textcoords="offset points", ha="center", fontsize=9)
+    left.set(xlabel="增加覆盖的优先订单（单）", ylabel="增加的模拟成本（千美元）",
+             xlim=(-20, 770), ylim=(-2, 99))
+    left.set_title("A    成本与覆盖", loc="left")
+    threshold = cost / orders
+    for budget, value in threshold.items():
+        y = budget / 10000
+        right.hlines(y, 0, value, color="#a4adb3", lw=.8)
+        right.plot(value, y, "o", mfc="white", mec="#244e68", ms=5)
+        right.annotate(f"{value:.2f}", (value, y), xytext=(6, 0),
+                       textcoords="offset points", va="center", fontsize=9)
+    right.set(xlabel="两种策略持平时的估值（美元/单）", ylabel="干预预算（万美元）",
+              yticks=threshold.index / 10000, ylim=(5, 45), xlim=(0, 265))
+    right.set_title("B    每多保障一单的成本", loc="left")
+    for ax in (left, right):
+        ax.spines[["top","right"]].set_visible(False)
+    format_figure(fig)
+    fig.savefig(ROOT / "images/priority_tradeoff.png", dpi=260)
     plt.close(fig)
 
 

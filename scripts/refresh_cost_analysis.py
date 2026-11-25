@@ -57,7 +57,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-
+from figure_style import format_figure  # noqa: E402
 from src import pipeline, policy  # noqa: E402
 
 CACHE_VERSION = "pmf-v2"
@@ -326,6 +326,43 @@ def df_to_markdown(df: pd.DataFrame, floatfmt: str = ".3f") -> str:
         cells = [format(v, floatfmt) if isinstance(v, float) else str(v) for v in row]
         lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines)
+
+
+def plot_policy_cost_and_auc(comparison, ceiling, orders, penalty, directory):
+    """Plot observed policy costs and discrimination on the held-out orders."""
+    import matplotlib.pyplot as plt
+
+    selected = comparison.loc[~comparison["policy"].str.startswith("oracle")].sort_values("total_cost")
+    fig, ax = plt.subplots(figsize=(7.7, 4.2), layout="constrained")
+    costs = selected["total_cost"].to_numpy() / 1e6
+    rows = np.arange(len(costs))
+    ax.hlines(rows, costs.min(), costs, color="#c2c8cb", linewidth=.8)
+    ax.scatter(costs, rows, s=23, color="#345871")
+    ax.set(yticks=rows, yticklabels=selected["policy"], xlabel="Simulated cost (million USD)")
+    ax.set_title(f"{orders:,} held-out orders, delay penalty USD {penalty:.0f} per day", loc="left", fontsize=12)
+    ax.invert_yaxis()
+    ax.spines[["top", "right"]].set_visible(False)
+    format_figure(fig)
+    fig.savefig(directory / "policy_costs.png", dpi=260)
+    plt.close(fig)
+
+    labels = ["Shipping-mode base rate", "Full model (18 features)"]
+    auc = [ceiling["mode_base_rate_auc"], ceiling["model_auc"]]
+    for mode, group in ceiling["within_mode"].items():
+        labels.append(f"Within {mode} (n = {group['n_test']:,})")
+        auc.append(group["auc"])
+    fig, ax = plt.subplots(figsize=(7.3, 2.9), layout="constrained")
+    ax.axvline(.5, color="#717678", lw=.9, ls=":")
+    for row, value in enumerate(auc):
+        ax.plot(value, row, marker="o" if row < 2 else "s", color="#345871",
+                markerfacecolor="#345871" if row < 2 else "white", markersize=5)
+        ax.annotate(f"{value:.3f}", (value, row), xytext=(7, 0), textcoords="offset points", va="center", fontsize=9)
+    ax.set(yticks=range(len(labels)), yticklabels=labels, xlabel="ROC AUC (chance = 0.50)",
+           xlim=(.45, .90), ylim=(len(labels)-.5, -.5))
+    ax.spines[["top", "right"]].set_visible(False)
+    format_figure(fig)
+    fig.savefig(directory / "signal_ceiling.png", dpi=260)
+    plt.close(fig)
 
 
 def main() -> int:
@@ -680,60 +717,16 @@ def main() -> int:
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
-        # 1. policy cost bars, coloured by family
-        fig, ax = plt.subplots(figsize=(9.5, 4.6))
-        sub = comp[~comp["policy"].str.startswith("oracle")]
-        colors = []
-        for name in sub["policy"]:
-            if name.startswith("pmf"):
-                colors.append("#1f6f78")
-            elif name.startswith("binary"):
-                colors.append("#d99a2b")
-            elif name.startswith("quantile"):
-                colors.append("#9b3b3b")
-            elif "capacity" in name:
-                colors.append("#7c8a99")
-            else:
-                colors.append("#c9ced6")
-        ax.barh(sub["policy"], sub["total_cost"] / 1e3, color=colors)
-        ax.set_xlabel("total cost on test set ($k)")
-        ax.set_title(f"One cost function, {n:,} test orders, penalty ${pen:.0f}/day")
-        for y_, v in enumerate(sub["total_cost"] / 1e3):
-            ax.text(v + 2, y_, f"${v:,.0f}k", va="center", fontsize=8)
-        ax.invert_yaxis()
-        fig.tight_layout()
-        fig.savefig(images_dir / "policy_costs.png", dpi=150)
-        plt.close(fig)
-
-        # 2. signal ceiling
-        fig, ax = plt.subplots(figsize=(7.5, 3.8))
-        labels, values = ["shipping-mode\nbase rate", "full model\n(18 features)"], [
-            ceiling["mode_base_rate_auc"], ceiling["model_auc"]
-        ]
-        for mode, info in ceiling["within_mode"].items():
-            labels.append(f"within\n{mode}")
-            values.append(info["auc"])
-        bars = ax.bar(labels, values, color=["#1f6f78", "#2f5d8c", "#d99a2b", "#d99a2b"])
-        ax.axhline(0.5, color="#9b3b3b", linestyle="--", linewidth=1, label="no signal (AUC 0.50)")
-        ax.set_ylim(0.4, 0.85)
-        ax.set_ylabel("ROC AUC")
-        ax.set_title("Where the 0.78 ceiling comes from")
-        ax.legend(loc="upper right", fontsize=8)
-        for b, v in zip(bars, values):  # noqa: B905 (py3.9 compat)
-            ax.text(b.get_x() + b.get_width() / 2, max(v, 0.505) + 0.012, f"{v:.3f}",
-                    ha="center", fontsize=9)
-        fig.tight_layout()
-        fig.savefig(images_dir / "signal_ceiling.png", dpi=150)
-        plt.close(fig)
+        plot_policy_cost_and_auc(comp, ceiling, n, pen, images_dir)
 
         # 3. sensitivity: cost vs express price at $200/day
         fig, ax = plt.subplots(figsize=(8.5, 4.2))
         view = sens[sens["penalty_per_day"] == 200]
         for col, label, color in [
-            ("cost_binary_cost_aware", "binary + cost-aware rule", "#d99a2b"),
-            ("cost_quantile_grid", "quantile grid (3 points)", "#9b3b3b"),
-            ("cost_pmf_exact", "pmf (exact distribution)", "#1f6f78"),
-            ("cost_all_express", "all express", "#c9ced6"),
+            ("cost_binary_cost_aware", "binary + cost-aware rule", "#a1774b"),
+            ("cost_quantile_grid", "quantile grid (3 points)", "#7c4642"),
+            ("cost_pmf_exact", "pmf (exact distribution)", "#315b78"),
+            ("cost_all_express", "all express", "#bac2c6"),
         ]:
             ax.plot(view["express_cost"], view[col] / 1e3, marker="o", label=label, color=color)
         ax.set_xlabel("express cost ($/order)")
@@ -741,32 +734,34 @@ def main() -> int:
         ax.set_title("Cost vs express price, penalty $200/day")
         ax.legend(fontsize=8)
         fig.tight_layout()
-        fig.savefig(images_dir / "sensitivity.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images_dir / "sensitivity.png", dpi=260)
         plt.close(fig)
 
         # 4. why three points are not a distribution
         fig, axes = plt.subplots(1, 2, figsize=(10.5, 3.8))
         example = int(np.argmax(mode_test == "Standard Class"))
         q_grid = policy._QGRID
-        axes[0].bar(policy.ATOMS, pmf_lookup[example], color="#1f6f78", width=0.7)
+        axes[0].bar(policy.ATOMS, pmf_lookup[example], color="#315b78", width=0.7)
         axes[0].set_title("true pmf: Standard Class delay (estimated on train)")
         axes[0].set_xlabel("delay (days)")
         axes[0].set_ylabel("probability")
         axes[0].set_ylim(0, 0.45)
 
         true_cdf = np.cumsum(pmf_lookup[example])
-        axes[1].step(policy.ATOMS, true_cdf, where="post", color="#1f6f78",
+        axes[1].step(policy.ATOMS, true_cdf, where="post", color="#315b78",
                      label="true CDF (5 atoms)")
         grid = policy.quantile_grid(
             np.array([p10[example]]), np.array([p50[example]]), np.array([p90[example]])
         )[0]
-        axes[1].plot(grid, q_grid, color="#9b3b3b", label="quantile-grid CDF")
+        axes[1].plot(grid, q_grid, color="#7c4642", label="quantile-grid CDF")
         axes[1].set_title("same order, reconstructed from 3 quantiles")
         axes[1].set_xlabel("delay (days)")
         axes[1].set_ylim(0, 1)
         axes[1].legend(fontsize=8, loc="lower right")
         fig.tight_layout()
-        fig.savefig(images_dir / "distribution_example.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images_dir / "distribution_example.png", dpi=260)
         plt.close(fig)
 
         # 4b. robustness: regret across cost scenarios, two uncertainty bands
@@ -778,55 +773,58 @@ def main() -> int:
             ]
             x = np.arange(len(labels))
             ax.bar(x - 0.2, group["regret_nominal_expected"], width=0.4,
-                   label="nominal policy", color="#9b3b3b")
+                   label="nominal policy", color="#7c4642")
             ax.bar(x + 0.2, group["regret_robust_expected"], width=0.4,
-                   label="minimax-regret policy", color="#1f6f78")
+                   label="minimax-regret policy", color="#315b78")
             ax.set_xticks(x, labels, rotation=45, ha="right", fontsize=7)
             ax.set_title(set_name, fontsize=9)
             ax.set_ylabel("mean regret vs scenario optimum (USD/order)")
             ax.legend(fontsize=7)
         fig.tight_layout()
-        fig.savefig(images_dir / "robustness.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images_dir / "robustness.png", dpi=260)
         plt.close(fig)
 
         # 5. capacity curve: where ranking quality shows up
         fig, axes = plt.subplots(1, 2, figsize=(10.5, 3.6))
         axes[0].plot(cap["capacity"] * 100, cap["cost_pmf"] / 1e3, marker="o",
-                     color="#1f6f78", label="pmf exact")
+                     color="#315b78", label="pmf exact")
         axes[0].plot(cap["capacity"] * 100, cap["cost_quantile"] / 1e3, marker="o",
-                     color="#9b3b3b", label="quantile grid")
+                     color="#7c4642", label="quantile grid")
         axes[0].set_xlabel("expedite capacity (% of orders)")
         axes[0].set_ylabel("total cost ($k)")
         axes[0].set_title("Cost under a capacity constraint")
         axes[0].legend(fontsize=8)
         axes[1].plot(cap["capacity"] * 100, cap["recall_pmf"], marker="o",
-                     color="#1f6f78", label="pmf exact")
+                     color="#315b78", label="pmf exact")
         axes[1].plot(cap["capacity"] * 100, cap["recall_quantile"], marker="o",
-                     color="#9b3b3b", label="quantile grid")
+                     color="#7c4642", label="quantile grid")
         axes[1].set_xlabel("expedite capacity (% of orders)")
         axes[1].set_ylabel("late-order recall")
         axes[1].set_title("How many late orders get caught")
         axes[1].legend(fontsize=8)
         fig.tight_layout()
-        fig.savefig(images_dir / "capacity.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images_dir / "capacity.png", dpi=260)
         plt.close(fig)
 
         # 6. budget curve: what the first dollars buy
         fig, axes = plt.subplots(1, 2, figsize=(10.5, 3.6))
-        axes[0].plot(bc["budget"] / 1e3, bc["total_cost"] / 1e3, marker="o", color="#1f6f78")
+        axes[0].plot(bc["budget"] / 1e3, bc["total_cost"] / 1e3, marker="o", color="#315b78")
         axes[0].set_xlabel("intervention budget ($k)")
         axes[0].set_ylabel("total cost ($k)")
         axes[0].set_title("Cost under a budget constraint")
         axes[1].bar(bc["budget"] / 1e3, bc["orders_notify"], width=90,
-                    color="#2f5d8c", label="notify")
+                    color="#627d92", label="notify")
         axes[1].bar(bc["budget"] / 1e3, bc["orders_express"], width=90,
-                    bottom=bc["orders_notify"], color="#d99a2b", label="express")
+                    bottom=bc["orders_notify"], color="#a1774b", label="express")
         axes[1].set_xlabel("intervention budget ($k)")
         axes[1].set_ylabel("orders touched")
         axes[1].set_title("What the budget buys")
         axes[1].legend(fontsize=8)
         fig.tight_layout()
-        fig.savefig(images_dir / "budget.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images_dir / "budget.png", dpi=260)
         plt.close(fig)
 
         # 7. decision map: the action mix is a function of the economics
@@ -834,7 +832,7 @@ def main() -> int:
             index="penalty_per_day", columns="express_cost", values="express_rate_pmf"
         )
         fig, ax = plt.subplots(figsize=(7.2, 3.8))
-        im = ax.imshow(pivot.to_numpy(), cmap="YlOrBr", aspect="auto", vmin=0, vmax=1)
+        im = ax.imshow(pivot.to_numpy(), cmap="Blues", aspect="auto", vmin=0, vmax=1)
         ax.set_xticks(range(len(pivot.columns)), [f"${c}" for c in pivot.columns])
         ax.set_yticks(range(len(pivot.index)), [f"${p}" for p in pivot.index])
         ax.set_xlabel("express cost")
@@ -847,7 +845,8 @@ def main() -> int:
                         color="white" if value > 0.55 else "#3b3b3b")
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         fig.tight_layout()
-        fig.savefig(images_dir / "decision_map.png", dpi=150)
+        format_figure(fig)
+        fig.savefig(images_dir / "decision_map.png", dpi=260)
         plt.close(fig)
     except Exception as exc:  # pragma: no cover - charts are optional
         print(f"charts skipped: {exc}")
