@@ -1,0 +1,13 @@
+{
+  "source_sha256": "fa6d022ed437155e1a2f0378710602848703c8a7f203f7ff5d77805bf8480aa6",
+  "training_cutoff_exclusive": "2017-03-16T19:43:00",
+  "train_orders": 45820,
+  "test_orders": 9863,
+  "priority_orders": 3436,
+  "base_assumptions": {
+    "penalty": 200,
+    "notify_remaining": 0.6,
+    "express_days": 2
+  },
+  "stress_settings_per_budget": 36
+}

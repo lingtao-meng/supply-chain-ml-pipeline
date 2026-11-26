@@ -1,0 +1,109 @@
+budget,strategy,penalty,notify_remaining,break_even_express_days,status
+100000,first-come,100,0.600000,1.162393,threshold
+100000,first-come,100,0.800000,1.833333,threshold
+100000,first-come,100,1.000000,2.766234,threshold
+100000,first-come,200,0.600000,0.287037,threshold
+100000,first-come,200,0.800000,0.529321,threshold
+100000,first-come,200,1.000000,0.771605,threshold
+100000,first-come,300,0.600000,0.029835,threshold
+100000,first-come,300,0.800000,0.272119,threshold
+100000,first-come,300,1.000000,0.514403,threshold
+100000,historical threshold,100,0.600000,1.340909,threshold
+100000,historical threshold,100,0.800000,1.340909,threshold
+100000,historical threshold,100,1.000000,1.340909,threshold
+100000,historical threshold,200,0.600000,0.558659,threshold
+100000,historical threshold,200,0.800000,0.558659,threshold
+100000,historical threshold,200,1.000000,0.558659,threshold
+100000,historical threshold,300,0.600000,0.372439,threshold
+100000,historical threshold,300,0.800000,0.372439,threshold
+100000,historical threshold,300,1.000000,0.372439,threshold
+100000,daily pacing,100,0.600000,0.855126,threshold
+100000,daily pacing,100,0.800000,1.766346,threshold
+100000,daily pacing,100,1.000000,3.984127,threshold
+100000,daily pacing,200,0.600000,0.014790,threshold
+100000,daily pacing,200,0.800000,0.427563,threshold
+100000,daily pacing,200,1.000000,0.840336,threshold
+100000,daily pacing,300,0.600000,0.000000,profitable_without_express_effect
+100000,daily pacing,300,0.800000,0.147451,threshold
+100000,daily pacing,300,1.000000,0.560224,threshold
+200000,first-come,100,0.600000,1.138144,threshold
+200000,first-come,100,0.800000,1.769072,threshold
+200000,first-come,100,1.000000,2.596923,threshold
+200000,first-come,200,0.600000,0.293717,threshold
+200000,first-come,200,0.800000,0.525360,threshold
+200000,first-come,200,1.000000,0.757002,threshold
+200000,first-come,300,0.600000,0.041383,threshold
+200000,first-come,300,0.800000,0.273025,threshold
+200000,first-come,300,1.000000,0.504668,threshold
+200000,historical threshold,100,0.600000,1.331811,threshold
+200000,historical threshold,100,0.800000,1.331811,threshold
+200000,historical threshold,100,1.000000,1.331811,threshold
+200000,historical threshold,200,0.600000,0.561167,threshold
+200000,historical threshold,200,0.800000,0.561167,threshold
+200000,historical threshold,200,1.000000,0.561167,threshold
+200000,historical threshold,300,0.600000,0.374111,threshold
+200000,historical threshold,300,0.800000,0.374111,threshold
+200000,historical threshold,300,1.000000,0.374111,threshold
+200000,daily pacing,100,0.600000,0.961371,threshold
+200000,daily pacing,100,0.800000,1.721212,threshold
+200000,daily pacing,100,1.000000,2.824675,threshold
+200000,daily pacing,200,0.600000,0.182555,threshold
+200000,daily pacing,200,0.800000,0.480685,threshold
+200000,daily pacing,200,1.000000,0.778816,threshold
+200000,daily pacing,300,0.600000,0.000000,profitable_without_express_effect
+200000,daily pacing,300,0.800000,0.221080,threshold
+200000,daily pacing,300,1.000000,0.519211,threshold
+300000,first-come,100,0.600000,1.131593,threshold
+300000,first-come,100,0.800000,1.769780,threshold
+300000,first-come,100,1.000000,2.613636,threshold
+300000,first-come,200,0.600000,0.289013,threshold
+300000,first-come,200,0.800000,0.524253,threshold
+300000,first-come,200,1.000000,0.759494,threshold
+300000,first-come,300,0.600000,0.035848,threshold
+300000,first-come,300,0.800000,0.271089,threshold
+300000,first-come,300,1.000000,0.506329,threshold
+300000,historical threshold,100,0.600000,1.319680,threshold
+300000,historical threshold,100,0.800000,1.319680,threshold
+300000,historical threshold,100,1.000000,1.319680,threshold
+300000,historical threshold,200,0.600000,0.559701,threshold
+300000,historical threshold,200,0.800000,0.559701,threshold
+300000,historical threshold,200,1.000000,0.559701,threshold
+300000,historical threshold,300,0.600000,0.373134,threshold
+300000,historical threshold,300,0.800000,0.373134,threshold
+300000,historical threshold,300,1.000000,0.373134,threshold
+300000,daily pacing,100,0.600000,0.994381,threshold
+300000,daily pacing,100,0.800000,1.743175,threshold
+300000,daily pacing,100,1.000000,2.772532,threshold
+300000,daily pacing,200,0.600000,0.213944,threshold
+300000,daily pacing,200,0.800000,0.497190,threshold
+300000,daily pacing,200,1.000000,0.780437,threshold
+300000,daily pacing,300,0.600000,0.000000,profitable_without_express_effect
+300000,daily pacing,300,0.800000,0.237045,threshold
+300000,daily pacing,300,1.000000,0.520291,threshold
+400000,first-come,100,0.600000,1.124547,threshold
+400000,first-come,100,0.800000,1.736821,threshold
+400000,first-come,100,1.000000,2.529771,threshold
+400000,first-come,200,0.600000,0.294396,threshold
+400000,first-come,200,0.800000,0.523279,threshold
+400000,first-come,200,1.000000,0.752162,threshold
+400000,first-come,300,0.600000,0.043676,threshold
+400000,first-come,300,0.800000,0.272559,threshold
+400000,first-come,300,1.000000,0.501442,threshold
+400000,historical threshold,100,0.600000,1.327006,threshold
+400000,historical threshold,100,0.800000,1.327006,threshold
+400000,historical threshold,100,1.000000,1.327006,threshold
+400000,historical threshold,200,0.600000,0.561989,threshold
+400000,historical threshold,200,0.800000,0.561989,threshold
+400000,historical threshold,200,1.000000,0.561989,threshold
+400000,historical threshold,300,0.600000,0.374659,threshold
+400000,historical threshold,300,0.800000,0.374659,threshold
+400000,historical threshold,300,1.000000,0.374659,threshold
+400000,daily pacing,100,0.600000,1.079074,threshold
+400000,daily pacing,100,0.800000,1.737223,threshold
+400000,daily pacing,100,1.000000,2.598174,threshold
+400000,daily pacing,200,0.600000,0.264677,threshold
+400000,daily pacing,200,0.800000,0.515040,threshold
+400000,daily pacing,200,1.000000,0.765404,threshold
+400000,daily pacing,300,0.600000,0.009542,threshold
+400000,daily pacing,300,0.800000,0.259906,threshold
+400000,daily pacing,300,1.000000,0.510269,threshold
